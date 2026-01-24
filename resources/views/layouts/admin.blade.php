@@ -33,78 +33,10 @@
             background-color: #3994ef20;
             color: #3994ef;
         }
-        /* Loading Overlay */
-        #loading-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(4px);
-            transition: opacity 0.2s ease;
-        }
-        #loading-overlay.show {
-            display: flex;
-        }
-        .loading-card {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
-            border-radius: 12px;
-            background: white;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(226, 232, 240, 0.6);
-        }
-        .dark .loading-card {
-            background: #18181b;
-            border-color: rgba(39, 39, 42, 0.8);
-        }
-        .loader {
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(57, 148, 239, 0.2);
-            border-top-color: #3994ef;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        .dark .loader {
-            border-color: rgba(57, 148, 239, 0.3);
-            border-top-color: #3994ef;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .loading-text {
-            font-size: 14px;
-            font-weight: 600;
-            color: #374151;
-        }
-        .dark .loading-text {
-            color: #e4e4e7;
-        }
-        /* Fade transition */
-        #loading-overlay {
-            opacity: 0;
-            pointer-events: none;
-        }
-        #loading-overlay.show {
-            opacity: 1;
-            pointer-events: auto;
-        }
     </style>
     @stack('styles')
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display text-[#0d141b] dark:text-slate-100 antialiased overflow-x-hidden">
-<!-- Loading Overlay -->
-<div id="loading-overlay">
-<div class="loading-card">
-<span class="loader" aria-hidden="true"></span>
-<span class="loading-text" id="loading-message">Đang tải...</span>
-</div>
-</div>
 <div class="flex h-screen overflow-hidden">
 <!-- Sidebar Navigation -->
 <aside class="w-64 flex flex-col border-r border-[#cfdbe7] dark:border-slate-800 bg-background-light dark:bg-background-dark h-full">
@@ -195,51 +127,5 @@
 </main>
 </div>
 @stack('scripts')
-<script>
-// Loading Helper Functions with counter to handle multiple concurrent requests
-let loadingCounter = 0;
-
-window.showLoading = function(message = 'Đang xử lý...') {
-    loadingCounter++;
-    const overlay = document.getElementById('loading-overlay');
-    const messageEl = document.getElementById('loading-message');
-    if (overlay && messageEl) {
-        messageEl.textContent = message;
-        overlay.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-};
-
-window.hideLoading = function() {
-    loadingCounter = Math.max(0, loadingCounter - 1);
-    if (loadingCounter === 0) {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) {
-            overlay.classList.remove('show');
-            document.body.style.overflow = '';
-        }
-    }
-};
-
-// Auto show/hide loading for fetch requests
-const originalFetch = window.fetch;
-window.fetch = function(...args) {
-    // Only show loading for API calls, not for static assets
-    const url = args[0];
-    if (typeof url === 'string' && (url.includes('/api/') || url.includes('/admin/api/'))) {
-        showLoading('Đang tải dữ liệu...');
-        return originalFetch.apply(this, args)
-            .then(response => {
-                hideLoading();
-                return response;
-            })
-            .catch(error => {
-                hideLoading();
-                throw error;
-            });
-    }
-    return originalFetch.apply(this, args);
-};
-</script>
 </body>
 </html>

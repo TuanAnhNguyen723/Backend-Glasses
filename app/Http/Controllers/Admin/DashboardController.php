@@ -20,69 +20,57 @@ class DashboardController extends Controller
 
     public function getStats()
     {
-        $now = Carbon::now();
-        $lastMonth = $now->copy()->subMonth();
-        $thirtyDaysAgo = $now->copy()->subDays(30);
+        // Tính tổng doanh thu từ các đơn hàng đã giao
+        $totalRevenue = Order::where('status', 'delivered')
+            ->sum('total_amount');
 
-        // Tối ưu: Gộp các query liên quan đến orders
-        $ordersStats = DB::table('orders')
-            ->selectRaw('
-                COUNT(*) as total_orders,
-                SUM(CASE WHEN status = "delivered" THEN total_amount ELSE 0 END) as total_revenue,
-                SUM(CASE WHEN YEAR(created_at) = ? AND MONTH(created_at) = ? THEN 1 ELSE 0 END) as last_month_orders,
-                SUM(CASE WHEN status = "delivered" AND YEAR(created_at) = ? AND MONTH(created_at) = ? THEN total_amount ELSE 0 END) as last_month_revenue
-            ', [$lastMonth->year, $lastMonth->month, $lastMonth->year, $lastMonth->month])
-            ->first();
+        // Tổng số đơn hàng
+        $totalOrders = Order::count();
 
-        // Tối ưu: Query khách hàng hoạt động với subquery
-        $activeCustomers = DB::table('users')
-            ->whereExists(function($query) use ($thirtyDaysAgo) {
-                $query->select(DB::raw(1))
-                    ->from('orders')
-                    ->whereColumn('orders.user_id', 'users.id')
-                    ->where('orders.created_at', '>=', $thirtyDaysAgo);
-            })
-            ->count();
+        // Số khách hàng đang hoạt động (có đơn hàng trong 30 ngày qua)
+        $activeCustomers = User::whereHas('orders', function($query) {
+            $query->where('created_at', '>=', Carbon::now()->subDays(30));
+        })->count();
 
-        $lastMonthCustomers = DB::table('users')
-            ->whereExists(function($query) use ($lastMonth) {
-                $query->select(DB::raw(1))
-                    ->from('orders')
-                    ->whereColumn('orders.user_id', 'users.id')
-                    ->whereYear('orders.created_at', $lastMonth->year)
-                    ->whereMonth('orders.created_at', $lastMonth->month);
-            })
-            ->count();
-
-        // Tối ưu: Query sản phẩm đã bán với 1 query
-        $productsStats = DB::table('order_items')
+        // Tổng số sản phẩm đã bán (từ order_items)
+        $productsSold = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->where('orders.status', '!=', 'cancelled')
-            ->selectRaw('
-                SUM(order_items.quantity) as total_products_sold,
-                SUM(CASE WHEN YEAR(orders.created_at) = ? AND MONTH(orders.created_at) = ? THEN order_items.quantity ELSE 0 END) as last_month_products_sold
-            ', [$lastMonth->year, $lastMonth->month])
-            ->first();
+            ->sum('order_items.quantity');
 
-        // Tính toán growth
-        $totalRevenue = $ordersStats->total_revenue ?? 0;
-        $lastMonthRevenue = $ordersStats->last_month_revenue ?? 0;
+        // Tính % tăng trưởng so với tháng trước
+        $lastMonthRevenue = Order::where('status', 'delivered')
+            ->whereYear('created_at', Carbon::now()->subMonth()->year)
+            ->whereMonth('created_at', Carbon::now()->subMonth()->month)
+            ->sum('total_amount');
+        
         $revenueGrowth = $lastMonthRevenue > 0 
             ? round((($totalRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100, 1)
             : 0;
 
-        $totalOrders = $ordersStats->total_orders ?? 0;
-        $lastMonthOrders = $ordersStats->last_month_orders ?? 0;
+        $lastMonthOrders = Order::whereYear('created_at', Carbon::now()->subMonth()->year)
+            ->whereMonth('created_at', Carbon::now()->subMonth()->month)
+            ->count();
         $ordersGrowth = $lastMonthOrders > 0 
             ? round((($totalOrders - $lastMonthOrders) / $lastMonthOrders) * 100, 1)
             : 0;
 
+        // Tính % tăng trưởng khách hàng
+        $lastMonthCustomers = User::whereHas('orders', function($query) {
+            $query->whereYear('created_at', Carbon::now()->subMonth()->year)
+                  ->whereMonth('created_at', Carbon::now()->subMonth()->month);
+        })->count();
         $customersGrowth = $lastMonthCustomers > 0 
             ? round((($activeCustomers - $lastMonthCustomers) / $lastMonthCustomers) * 100, 1)
             : 0;
 
-        $productsSold = $productsStats->total_products_sold ?? 0;
-        $lastMonthProductsSold = $productsStats->last_month_products_sold ?? 0;
+        // Tính % tăng trưởng sản phẩm đã bán
+        $lastMonthProductsSold = DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('orders.status', '!=', 'cancelled')
+            ->whereYear('orders.created_at', Carbon::now()->subMonth()->year)
+            ->whereMonth('orders.created_at', Carbon::now()->subMonth()->month)
+            ->sum('order_items.quantity');
         $productsSoldGrowth = $lastMonthProductsSold > 0 
             ? round((($productsSold - $lastMonthProductsSold) / $lastMonthProductsSold) * 100, 1)
             : 0;
@@ -91,7 +79,7 @@ class DashboardController extends Controller
             'total_revenue' => $totalRevenue,
             'total_orders' => $totalOrders,
             'active_customers' => $activeCustomers,
-            'products_sold' => $productsSold,
+            'products_sold' => $productsSold ?? 0,
             'revenue_growth' => $revenueGrowth,
             'orders_growth' => $ordersGrowth,
             'customers_growth' => $customersGrowth,
@@ -101,34 +89,20 @@ class DashboardController extends Controller
 
     public function getSalesOverview()
     {
-        // Tối ưu: Lấy tất cả dữ liệu trong 1 query thay vì 6 queries riêng lẻ
-        $sixMonthsAgo = Carbon::now()->subMonths(5)->startOfMonth();
-        
-        $salesData = Order::where('status', 'delivered')
-            ->where('created_at', '>=', $sixMonthsAgo)
-            ->selectRaw('
-                DATE_FORMAT(created_at, "%b") as month_name,
-                YEAR(created_at) as year,
-                MONTH(created_at) as month,
-                SUM(total_amount) as revenue
-            ')
-            ->groupBy('year', 'month', 'month_name')
-            ->orderBy('year')
-            ->orderBy('month')
-            ->get();
-
-        // Đảm bảo có đủ 6 tháng (fill missing months với 0)
+        // Lấy dữ liệu doanh thu 6 tháng gần nhất
         $months = [];
         $revenues = [];
-        $dataMap = $salesData->keyBy(function($item) {
-            return Carbon::create($item->year, $item->month, 1)->format('Y-m');
-        });
 
         for ($i = 5; $i >= 0; $i--) {
             $month = Carbon::now()->subMonths($i);
-            $monthKey = $month->format('Y-m');
-            $months[] = $month->format('M');
-            $revenues[] = $dataMap->has($monthKey) ? (float)$dataMap[$monthKey]->revenue : 0;
+            $monthName = $month->format('M');
+            $revenue = Order::where('status', 'delivered')
+                ->whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->sum('total_amount');
+
+            $months[] = $monthName;
+            $revenues[] = $revenue;
         }
 
         return response()->json([
@@ -175,7 +149,7 @@ class DashboardController extends Controller
                     'customer_initials' => $this->getInitials($order->user ? $order->user->name : 'KV'),
                     'status' => $order->status,
                     'status_label' => $this->getStatusLabel($order->status),
-                    'amount' => number_format((float)$order->total_amount, 0, ',', '.'),
+                    'amount' => number_format($order->total_amount, 0, ',', '.'),
                     'date' => $order->created_at->format('d M, Y'),
                 ];
             });

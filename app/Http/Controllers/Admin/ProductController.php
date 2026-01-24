@@ -17,17 +17,7 @@ class ProductController extends Controller
 
     public function getProducts(Request $request)
     {
-        // Tối ưu: Chỉ load primary image thay vì tất cả images
-        $query = Product::with([
-            'category:id,name',
-            'images' => function($q) {
-                $q->where('is_primary', true)->select('id', 'product_id', 'image_url', 'is_primary')
-                  ->limit(1);
-            }
-        ])->select([
-            'id', 'name', 'sku', 'description', 'category_id', 'frame_shape',
-            'base_price', 'stock_quantity', 'low_stock_threshold', 'is_active', 'created_at'
-        ]);
+        $query = Product::with(['category', 'images']);
 
         // Search
         if ($request->has('search') && $request->search) {
@@ -68,7 +58,8 @@ class ProductController extends Controller
         $products = $query->paginate($perPage);
 
         $products->getCollection()->transform(function($product) {
-            $primaryImage = $product->images->first();
+            $primaryImage = $product->images->where('is_primary', true)->first() 
+                ?? $product->images->first();
             $imageUrl = $primaryImage ? $primaryImage->image_url : 'https://via.placeholder.com/100';
             
             // Tính % tồn kho
@@ -110,36 +101,38 @@ class ProductController extends Controller
 
     public function getStats()
     {
-        // Tối ưu: Gộp tất cả vào 1 query
-        $stats = Product::selectRaw('
-            SUM(stock_quantity) as total_inventory,
-            SUM(CASE WHEN stock_quantity > 0 AND stock_quantity <= low_stock_threshold THEN 1 ELSE 0 END) as low_stock_items,
-            SUM(base_price * stock_quantity) as stock_value
-        ')->first();
+        // Tổng tồn kho
+        $totalInventory = Product::sum('stock_quantity');
+
+        // Số sản phẩm sắp hết hàng
+        $lowStockItems = Product::whereColumn('stock_quantity', '<=', 'low_stock_threshold')
+            ->where('stock_quantity', '>', 0)
+            ->count();
+
+        // Giá trị tồn kho
+        $stockValue = Product::selectRaw('SUM(base_price * stock_quantity) as total')
+            ->first()
+            ->total ?? 0;
 
         // Tính % tăng trưởng tồn kho (so với tháng trước - giả sử)
         $inventoryGrowth = 2; // Có thể tính từ lịch sử nếu có
 
         return response()->json([
-            'total_inventory' => $stats->total_inventory ?? 0,
-            'low_stock_items' => $stats->low_stock_items ?? 0,
-            'stock_value' => $stats->stock_value ?? 0,
+            'total_inventory' => $totalInventory,
+            'low_stock_items' => $lowStockItems,
+            'stock_value' => $stockValue,
             'inventory_growth' => $inventoryGrowth,
         ]);
     }
 
     public function getFilters()
     {
-        // Tối ưu: Cache filters vì ít thay đổi
         $categories = Category::where('is_active', true)
             ->orderBy('name')
-            ->select('id', 'name')
-            ->get();
+            ->get(['id', 'name']);
 
-        // Tối ưu: Chỉ select frame_shape thay vì load toàn bộ model
-        $frameShapes = Product::select('frame_shape')
+        $frameShapes = Product::distinct()
             ->whereNotNull('frame_shape')
-            ->distinct()
             ->pluck('frame_shape')
             ->map(function($shape) {
                 return [
