@@ -67,8 +67,8 @@
         <div class="lg:col-span-8">
             <!-- Tabs Navigation -->
             <div class="bg-white dark:bg-slate-900 rounded-xl border border-[#cfdbe7] dark:border-slate-800 mb-4">
-                <div class="flex border-b border-[#cfdbe7] dark:border-slate-800">
-                    <button class="tab-btn active px-6 py-3 text-sm font-bold text-primary border-b-2 border-primary transition-colors" data-tab="basic">
+                <div class="flex border-[#cfdbe7] dark:border-slate-800">
+                    <button class="tab-btn active px-6 py-3 text-sm font-bold text-primary border-primary transition-colors" data-tab="basic">
                         <span class="material-symbols-outlined text-base align-middle mr-2">edit_note</span>
                         Thông Tin Cơ Bản
                     </button>
@@ -265,7 +265,7 @@
                     
                     // Remove active class from all buttons
                     tabButtons.forEach(btn => {
-                        btn.classList.remove('active', 'text-primary', 'border-b-2', 'border-primary');
+                        btn.classList.remove('active', 'text-primary');
                         btn.classList.add('text-[#4c739a]');
                     });
                     
@@ -276,7 +276,7 @@
                     });
                     
                     // Add active class to clicked button
-                    this.classList.add('active', 'text-primary', 'border-b-2', 'border-primary');
+                    this.classList.add('active', 'text-primary');
                     this.classList.remove('text-[#4c739a]');
                     
                     // Show corresponding tab content - force display
