@@ -18,8 +18,11 @@ Route::prefix('admin')->group(function () {
     // Product Management Routes
     Route::get('/products', [\App\Http\Controllers\Admin\ProductController::class, 'index'])->name('admin.products');
     Route::get('/products/create', [\App\Http\Controllers\Admin\ProductController::class, 'create'])->name('admin.products.create');
+    Route::get('/products/{id}/edit', [\App\Http\Controllers\Admin\ProductController::class, 'edit'])->name('admin.products.edit');
     Route::post('/api/products', [\App\Http\Controllers\Admin\ProductController::class, 'store'])->name('admin.api.products.store');
-    Route::get('/api/products', [\App\Http\Controllers\Admin\ProductController::class, 'getProducts'])->name('admin.api.products');
-    Route::get('/api/products/stats', [\App\Http\Controllers\Admin\ProductController::class, 'getStats'])->name('admin.api.products.stats');
+    Route::put('/api/products/{id}', [\App\Http\Controllers\Admin\ProductController::class, 'update'])->name('admin.api.products.update');
     Route::get('/api/products/filters', [\App\Http\Controllers\Admin\ProductController::class, 'getFilters'])->name('admin.api.products.filters');
+    Route::get('/api/products/stats', [\App\Http\Controllers\Admin\ProductController::class, 'getStats'])->name('admin.api.products.stats');
+    Route::get('/api/products/{id}', [\App\Http\Controllers\Admin\ProductController::class, 'show'])->name('admin.api.products.show');
+    Route::get('/api/products', [\App\Http\Controllers\Admin\ProductController::class, 'getProducts'])->name('admin.api.products');
 });

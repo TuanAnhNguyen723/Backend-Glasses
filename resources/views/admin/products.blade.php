@@ -86,7 +86,8 @@
                 <thead>
                     <tr class="bg-[#f6f7f8]/50 dark:bg-slate-800/50 border-b border-[#cfdbe7] dark:border-slate-800">
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Sản Phẩm</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Danh Mục/Khung</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Danh Mục</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Khung</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Chất Liệu</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Tag</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Giá</th>
@@ -97,7 +98,7 @@
                 </thead>
                 <tbody id="products-table-body" class="divide-y divide-[#cfdbe7] dark:divide-slate-800">
                     <tr>
-                        <td colspan="8" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td>
+                        <td colspan="9" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td>
                     </tr>
                 </tbody>
             </table>
@@ -196,7 +197,7 @@
         function renderProducts(products) {
             if (products.length === 0) {
                 document.getElementById('products-table-body').innerHTML = 
-                    '<tr><td colspan="8" class="px-6 py-8 text-center text-[#4c739a]">Không có sản phẩm nào</td></tr>';
+                    '<tr><td colspan="9" class="px-6 py-8 text-center text-[#4c739a]">Không có sản phẩm nào</td></tr>';
                 return;
             }
 
@@ -243,6 +244,9 @@
                             </div>
                         </td>
                         <td class="px-6 py-4">
+                            <span class="text-sm font-medium text-[#0d141b] dark:text-white">${product.category || '-'}</span>
+                        </td>
+                        <td class="px-6 py-4">
                             <span class="px-3 py-1 rounded-lg ${product.frame_shape === 'aviator' ? 'bg-primary/10 text-primary' : 'bg-[#e7edf3] dark:bg-slate-800 text-[#0d141b] dark:text-slate-300'} text-xs font-bold">${frameLabel}</span>
                         </td>
                         <td class="px-6 py-4">
@@ -261,16 +265,16 @@
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="flex items-center gap-1.5 text-xs font-bold ${statusColor} px-2.5 py-1 rounded-full w-fit">
+                            <span class="px-3 py-1 rounded-lg ${statusColor} text-xs font-bold flex items-center gap-1.5 w-fit">
                                 <span class="size-1.5 rounded-full ${statusDotColor}"></span>
                                 ${statusLabel}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-primary border border-transparent hover:border-[#cfdbe7] transition-all">
+                                <a href="/admin/products/${product.id}/edit" class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-primary border border-transparent hover:border-[#cfdbe7] transition-all">
                                     <span class="material-symbols-outlined text-lg">edit</span>
-                                </button>
+                                </a>
                                 <button class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-red-500 border border-transparent hover:border-[#cfdbe7] transition-all">
                                     <span class="material-symbols-outlined text-lg">delete</span>
                                 </button>
