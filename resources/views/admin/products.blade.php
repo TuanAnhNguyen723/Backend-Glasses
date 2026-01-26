@@ -275,7 +275,7 @@
                                 <a href="/admin/products/${product.id}/edit" class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-primary border border-transparent hover:border-[#cfdbe7] transition-all">
                                     <span class="material-symbols-outlined text-lg">edit</span>
                                 </a>
-                                <button class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-red-500 border border-transparent hover:border-[#cfdbe7] transition-all">
+                                <button onclick="confirmDeleteProduct(${product.id}, '${product.name.replace(/'/g, "\\'")}')" class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-red-500 border border-transparent hover:border-[#cfdbe7] transition-all">
                                     <span class="material-symbols-outlined text-lg">delete</span>
                                 </button>
                             </div>
@@ -481,5 +481,85 @@
                 });
             });
         });
+
+        // Confirm and Delete Product
+        async function confirmDeleteProduct(productId, productName) {
+            // Tạo modal confirm box
+            const confirmBox = document.createElement('div');
+            confirmBox.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm';
+            confirmBox.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-[#cfdbe7] dark:border-slate-800 animate-in fade-in duration-300">
+                    <div class="p-6">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="size-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-red-600 dark:text-red-400 text-2xl">warning</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <h3 class="text-lg font-bold text-[#0d141b] dark:text-white">Xác nhận xóa sản phẩm</h3>
+                                <p class="text-sm text-[#4c739a]">Hành động này không thể hoàn tác</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-[#0d141b] dark:text-slate-300 mb-6">
+                            Bạn có chắc chắn muốn xóa sản phẩm <strong>"${productName.replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</strong>? 
+                            Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn.
+                        </p>
+                        <div class="flex items-center justify-end gap-3">
+                            <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 rounded-xl border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-[#0d141b] dark:text-white hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors">
+                                Hủy
+                            </button>
+                            <button onclick="deleteProduct(${productId}, this)" class="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">
+                                Xóa sản phẩm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmBox);
+
+            // Đóng khi click bên ngoài
+            confirmBox.addEventListener('click', function(e) {
+                if (e.target === confirmBox) {
+                    confirmBox.remove();
+                }
+            });
+        }
+
+        // Delete Product
+        async function deleteProduct(productId, button) {
+            const confirmBox = button.closest('.fixed');
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Đang xóa...';
+
+            try {
+                const response = await fetch(`/admin/api/products/${productId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    confirmBox.remove();
+                    notificationManager.success('Sản phẩm đã được xóa thành công!', 'Thành công');
+                    // Reload products list
+                    loadProducts(currentPage);
+                    loadStats();
+                } else {
+                    notificationManager.error(data.message || 'Không thể xóa sản phẩm', 'Lỗi');
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Error deleting product:', error);
+                notificationManager.error('Lỗi khi xóa sản phẩm: ' + error.message, 'Lỗi');
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
     </script>
 @endpush

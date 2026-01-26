@@ -626,7 +626,7 @@
             const frameShape = document.getElementById('frame-shape').value;
             
             if (!name || !sku || !price || !stock || !category || !frameShape) {
-                alert('Vui lòng điền đầy đủ các trường bắt buộc');
+                notificationManager.error('Vui lòng điền đầy đủ các trường bắt buộc', 'Lỗi xác thực');
                 return;
             }
             
@@ -677,26 +677,28 @@
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
                     console.error('Non-JSON response:', text);
-                    alert('Lỗi: Server trả về dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.');
+                    notificationManager.error('Server trả về dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.', 'Lỗi');
                     return;
                 }
                 
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    alert('Sản phẩm đã được cập nhật thành công!');
-                    window.location.href = '{{ route("admin.products") }}';
+                    notificationManager.success('Sản phẩm đã được cập nhật thành công!', 'Thành công');
+                    setTimeout(() => {
+                        window.location.href = '{{ route("admin.products") }}';
+                    }, 1500);
                 } else {
                     if (data.errors) {
-                        const errorMessages = Object.values(data.errors).flat().join('\n');
-                        alert('Lỗi xác thực:\n' + errorMessages);
+                        const errorMessages = Object.values(data.errors).flat().join(', ');
+                        notificationManager.error(errorMessages, 'Lỗi xác thực');
                     } else {
-                        alert('Lỗi: ' + (data.message || 'Không thể cập nhật sản phẩm'));
+                        notificationManager.error(data.message || 'Không thể cập nhật sản phẩm', 'Lỗi');
                     }
                 }
             } catch (error) {
                 console.error('Error updating product:', error);
-                alert('Lỗi khi cập nhật sản phẩm: ' + error.message);
+                notificationManager.error('Lỗi khi cập nhật sản phẩm: ' + error.message, 'Lỗi');
             }
         });
 

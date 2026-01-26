@@ -540,4 +540,36 @@ class ProductController extends Controller
             'product' => $product->load('category', 'images', 'colors'),
         ], 200);
     }
+
+    public function destroy($id)
+    {
+        try {
+            $product = Product::findOrFail($id);
+            
+            // Xóa tất cả hình ảnh của sản phẩm
+            foreach ($product->images as $image) {
+                $filePath = public_path($image->image_url);
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
+                $image->delete();
+            }
+            
+            // Xóa màu sắc
+            $product->colors()->delete();
+            
+            // Xóa sản phẩm
+            $product->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Sản phẩm đã được xóa thành công',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi xóa sản phẩm: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

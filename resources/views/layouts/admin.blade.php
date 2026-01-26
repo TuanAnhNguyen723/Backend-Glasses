@@ -33,6 +33,29 @@
             background-color: #3994ef20;
             color: #3994ef;
         }
+        /* Notification Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .slide-in-from-top-4 {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .duration-300 {
+            animation-duration: 300ms;
+        }
     </style>
     @stack('styles')
 </head>
@@ -126,6 +149,11 @@
             @endif
         </main>
     </div>
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed top-6 right-6 z-[100] flex flex-col gap-4"></div>
+    
+    <!-- Notification Manager Script -->
+    <script src="{{ asset('js/notifications.js') }}"></script>
     @stack('scripts')
 </body>
 </html>
