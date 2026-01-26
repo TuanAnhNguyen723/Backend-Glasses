@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\Brand;
 use App\Models\ProductColor;
 use App\Models\ProductImage;
 use Illuminate\Http\Request;
@@ -26,11 +27,14 @@ class ProductController extends Controller
 
     public function edit($id)
     {
-        $product = Product::with(['category', 'images', 'colors'])->findOrFail($id);
+        $product = Product::with(['category', 'brand', 'images', 'colors'])->findOrFail($id);
         $categories = Category::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
-        return view('admin.products.edit', compact('product', 'categories'));
+        $brands = Brand::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        return view('admin.products.edit', compact('product', 'categories', 'brands'));
     }
 
     public function show($id)
@@ -78,6 +82,7 @@ class ProductController extends Controller
                 'stock_quantity' => 'required|integer|min:0',
                 'low_stock_threshold' => 'nullable|integer|min:0',
                 'category_id' => 'required|exists:categories,id',
+                'brand_id' => 'nullable|exists:brands,id',
                 'frame_shape' => 'required|string',
                 'frame_type' => 'nullable|string',
                 'lens_compatibility' => 'nullable|string',
@@ -126,6 +131,7 @@ class ProductController extends Controller
                 'stock_quantity' => $validated['stock_quantity'],
                 'low_stock_threshold' => $validated['low_stock_threshold'] ?? 10,
                 'category_id' => $validated['category_id'],
+                'brand_id' => $validated['brand_id'] ?? null,
                 'frame_shape' => $validated['frame_shape'],
                 'material' => $validated['material'] ?? null,
                 'badge' => $validated['badge'] ?? null,
@@ -218,7 +224,7 @@ class ProductController extends Controller
 
     public function getProducts(Request $request)
     {
-        $query = Product::with(['category', 'images']);
+        $query = Product::with(['category', 'brand', 'images']);
 
         // Search
         if ($request->has('search') && $request->search) {
@@ -246,6 +252,21 @@ class ProductController extends Controller
                 $query->where('is_active', true);
             } elseif ($request->status === 'inactive') {
                 $query->where('is_active', false);
+            }
+        }
+
+        // Filter by brand
+        if ($request->has('brand') && $request->brand) {
+            $query->where('brand_id', $request->brand);
+        }
+
+        // Filter by price range
+        if ($request->has('price') && $request->price) {
+            $priceRange = explode('-', $request->price);
+            if (count($priceRange) === 2) {
+                $minPrice = (int)$priceRange[0];
+                $maxPrice = (int)$priceRange[1];
+                $query->whereBetween('base_price', [$minPrice, $maxPrice]);
             }
         }
 
@@ -285,7 +306,9 @@ class ProductController extends Controller
                 'sku' => $product->sku,
                 'image_url' => $imageUrl,
                 'category' => $product->category ? $product->category->name : 'Chưa phân loại',
+                'brand' => $product->brand ? $product->brand->name : null,
                 'frame_shape' => $product->frame_shape,
+                'frame_type' => $product->frame_type,
                 'material' => $product->material,
                 'badge' => $product->badge,
                 'price' => number_format($product->base_price, 0, ',', '.'),
@@ -333,7 +356,11 @@ class ProductController extends Controller
         $categories = Category::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
-
+        
+        $brands = Brand::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        
         $frameShapes = Product::distinct()
             ->whereNotNull('frame_shape')
             ->pluck('frame_shape')
@@ -346,6 +373,7 @@ class ProductController extends Controller
 
         return response()->json([
             'categories' => $categories,
+            'brands' => $brands,
             'frame_shapes' => $frameShapes,
         ]);
     }
@@ -362,6 +390,7 @@ class ProductController extends Controller
                 'stock_quantity' => 'required|integer|min:0',
                 'low_stock_threshold' => 'nullable|integer|min:0',
                 'category_id' => 'required|exists:categories,id',
+                'brand_id' => 'nullable|exists:brands,id',
                 'frame_shape' => 'required|string',
                 'frame_type' => 'nullable|string',
                 'lens_compatibility' => 'nullable|string',
@@ -414,6 +443,7 @@ class ProductController extends Controller
                 'stock_quantity' => $validated['stock_quantity'],
                 'low_stock_threshold' => $validated['low_stock_threshold'] ?? 10,
                 'category_id' => $validated['category_id'],
+                'brand_id' => $validated['brand_id'] ?? null,
                 'frame_shape' => $validated['frame_shape'],
                 'material' => $validated['material'] ?? null,
                 'badge' => $validated['badge'] ?? null,

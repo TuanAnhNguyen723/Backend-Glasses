@@ -78,6 +78,47 @@
                 </button>
             </div>
         </div>
+        <!-- Brand Filter -->
+        <div class="relative">
+            <button id="brand-filter-btn" class="flex shrink-0 items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-[#cfdbe7] dark:border-slate-800 hover:border-primary/50 transition-all shadow-sm">
+                <span class="text-xs font-bold text-[#4c739a] uppercase">Thương hiệu:</span>
+                <span id="brand-filter-text" class="text-sm font-semibold">Tất cả</span>
+                <span class="material-symbols-outlined text-lg">expand_more</span>
+            </button>
+            <div id="brand-dropdown" class="hidden absolute top-full left-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl border border-[#cfdbe7] dark:border-slate-800 shadow-xl max-h-60 overflow-y-auto z-50">
+                <button class="w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option" data-value="" data-type="brand">
+                    <span class="font-semibold">Tất cả</span>
+                </button>
+            </div>
+        </div>
+        <!-- Price Filter -->
+        <div class="relative">
+            <button id="price-filter-btn" class="flex shrink-0 items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-[#cfdbe7] dark:border-slate-800 hover:border-primary/50 transition-all shadow-sm">
+                <span class="text-xs font-bold text-[#4c739a] uppercase">Giá:</span>
+                <span id="price-filter-text" class="text-sm font-semibold">Tất cả</span>
+                <span class="material-symbols-outlined text-lg">expand_more</span>
+            </button>
+            <div id="price-dropdown" class="hidden absolute top-full left-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl border border-[#cfdbe7] dark:border-slate-800 shadow-xl z-50">
+                <button class="w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option" data-value="" data-type="price">
+                    <span class="font-semibold">Tất cả</span>
+                </button>
+                <button class="w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option" data-value="0-1000000" data-type="price">
+                    <span class="font-semibold">Dưới 1 triệu</span>
+                </button>
+                <button class="w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option" data-value="1000000-3000000" data-type="price">
+                    <span class="font-semibold">1 - 3 triệu</span>
+                </button>
+                <button class="w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option" data-value="3000000-5000000" data-type="price">
+                    <span class="font-semibold">3 - 5 triệu</span>
+                </button>
+                <button class="w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option" data-value="5000000-10000000" data-type="price">
+                    <span class="font-semibold">5 - 10 triệu</span>
+                </button>
+                <button class="w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option" data-value="10000000-999999999" data-type="price">
+                    <span class="font-semibold">Trên 10 triệu</span>
+                </button>
+            </div>
+        </div>
     </div>
     <!-- Products Table -->
     <div class="bg-white dark:bg-slate-900 rounded-2xl border border-[#cfdbe7] dark:border-slate-800 shadow-sm overflow-hidden">
@@ -87,6 +128,7 @@
                     <tr class="bg-[#f6f7f8]/50 dark:bg-slate-800/50 border-b border-[#cfdbe7] dark:border-slate-800">
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Sản Phẩm</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Danh Mục</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Thương Hiệu</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Khung</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Chất Liệu</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Tag</th>
@@ -98,7 +140,7 @@
                 </thead>
                 <tbody id="products-table-body" class="divide-y divide-[#cfdbe7] dark:divide-slate-800">
                     <tr>
-                        <td colspan="9" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td>
+                        <td colspan="10" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td>
                     </tr>
                 </tbody>
             </table>
@@ -164,7 +206,9 @@
             search: '',
             category: '',
             frame_shape: '',
-            status: 'active'
+            status: 'active',
+            brand: '',
+            price: ''
         };
 
         // Load Products
@@ -179,6 +223,8 @@
                 if (filters.category) params.append('category', filters.category);
                 if (filters.frame_shape) params.append('frame_shape', filters.frame_shape);
                 if (filters.status) params.append('status', filters.status);
+                if (filters.brand) params.append('brand', filters.brand);
+                if (filters.price) params.append('price', filters.price);
 
                 const response = await fetch(`{{ route('admin.api.products') }}?${params}`);
                 const data = await response.json();
@@ -197,7 +243,7 @@
         function renderProducts(products) {
             if (products.length === 0) {
                 document.getElementById('products-table-body').innerHTML = 
-                    '<tr><td colspan="9" class="px-6 py-8 text-center text-[#4c739a]">Không có sản phẩm nào</td></tr>';
+                    '<tr><td colspan="10" class="px-6 py-8 text-center text-[#4c739a]">Không có sản phẩm nào</td></tr>';
                 return;
             }
 
@@ -247,7 +293,13 @@
                             <span class="text-sm font-medium text-[#0d141b] dark:text-white">${product.category || '-'}</span>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="px-3 py-1 rounded-lg ${product.frame_shape === 'aviator' ? 'bg-primary/10 text-primary' : 'bg-[#e7edf3] dark:bg-slate-800 text-[#0d141b] dark:text-slate-300'} text-xs font-bold">${frameLabel}</span>
+                            <span class="text-sm font-medium text-[#0d141b] dark:text-white">${product.brand || '-'}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="px-3 py-1 rounded-lg ${product.frame_shape === 'aviator' ? 'bg-primary/10 text-primary' : 'bg-[#e7edf3] dark:bg-slate-800 text-[#0d141b] dark:text-slate-300'} text-xs font-bold whitespace-nowrap">${frameLabel}</span>
+                                ${product.frame_type ? `<span class="px-3 py-1 rounded-lg bg-[#e7edf3] dark:bg-slate-800 text-[#0d141b] dark:text-slate-300 text-xs font-bold whitespace-nowrap">${product.frame_type}</span>` : ''}
+                            </div>
                         </td>
                         <td class="px-6 py-4">
                             <span class="text-sm font-medium text-[#0d141b] dark:text-white">${product.material || '-'}</span>
@@ -265,10 +317,12 @@
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="px-3 py-1 rounded-lg ${statusColor} text-xs font-bold flex items-center gap-1.5 w-fit">
-                                <span class="size-1.5 rounded-full ${statusDotColor}"></span>
-                                ${statusLabel}
-                            </span>
+                            <div class="flex items-center">
+                                <span class="px-3 py-1 rounded-lg ${statusColor} text-xs font-bold flex items-center gap-1.5 whitespace-nowrap">
+                                    <span class="size-1.5 rounded-full ${statusDotColor}"></span>
+                                    ${statusLabel}
+                                </span>
+                            </div>
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -377,6 +431,20 @@
                     frameDropdown.appendChild(button);
                 });
 
+                // Populate Brand Dropdown
+                const brandDropdown = document.getElementById('brand-dropdown');
+                brandDropdown.innerHTML = '<button class="w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option" data-value="" data-type="brand"><span class="font-semibold">Tất cả</span></button>';
+                if (data.brands && Array.isArray(data.brands)) {
+                    data.brands.forEach(brand => {
+                        const button = document.createElement('button');
+                        button.className = 'w-full text-left px-4 py-2 text-sm hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors filter-option';
+                        button.setAttribute('data-value', brand.id);
+                        button.setAttribute('data-type', 'brand');
+                        button.innerHTML = `<span class="font-semibold">${brand.name}</span>`;
+                        brandDropdown.appendChild(button);
+                    });
+                }
+
                 window.availableFilters = data;
             } catch (error) {
                 console.error('Error loading filters:', error);
@@ -430,6 +498,22 @@
                     '': 'Tất cả'
                 };
                 document.getElementById('status-filter-text').textContent = statusLabels[value] || 'Tất cả';
+            } else if (type === 'brand') {
+                filters.brand = value;
+                const text = value === '' ? 'Tất cả' : 
+                    window.availableFilters?.brands.find(b => b.id == value)?.name || 'Tất cả';
+                document.getElementById('brand-filter-text').textContent = text;
+            } else if (type === 'price') {
+                filters.price = value;
+                const priceLabels = {
+                    '': 'Tất cả',
+                    '0-1000000': 'Dưới 1 triệu',
+                    '1000000-3000000': '1 - 3 triệu',
+                    '3000000-5000000': '3 - 5 triệu',
+                    '5000000-10000000': '5 - 10 triệu',
+                    '10000000-999999999': 'Trên 10 triệu'
+                };
+                document.getElementById('price-filter-text').textContent = priceLabels[value] || 'Tất cả';
             }
 
             // Close dropdown
@@ -468,6 +552,16 @@
                 document.getElementById('status-filter-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
                     toggleDropdown('status-dropdown', 'status-filter-btn');
+                });
+
+                document.getElementById('brand-filter-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleDropdown('brand-dropdown', 'brand-filter-btn');
+                });
+
+                document.getElementById('price-filter-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleDropdown('price-dropdown', 'price-filter-btn');
                 });
 
                 // Setup filter option clicks

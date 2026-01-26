@@ -14,11 +14,11 @@ return new class extends Migration
         if (!Schema::hasTable('brands')) {
             Schema::create('brands', function (Blueprint $table) {
                 $table->id();
-                $table->string('name');
-                $table->string('slug')->unique();
-                $table->text('description')->nullable();
-                $table->string('logo_url')->nullable();
-                $table->string('website_url')->nullable();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
+            $table->text('logo_url')->nullable();
+            $table->string('website_url', 500)->nullable();
                 $table->boolean('is_active')->default(true);
                 $table->integer('sort_order')->default(0);
                 $table->timestamps();

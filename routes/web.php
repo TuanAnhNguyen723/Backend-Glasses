@@ -26,4 +26,12 @@ Route::prefix('admin')->group(function () {
     Route::get('/api/products/stats', [\App\Http\Controllers\Admin\ProductController::class, 'getStats'])->name('admin.api.products.stats');
     Route::get('/api/products/{id}', [\App\Http\Controllers\Admin\ProductController::class, 'show'])->name('admin.api.products.show');
     Route::get('/api/products', [\App\Http\Controllers\Admin\ProductController::class, 'getProducts'])->name('admin.api.products');
+    
+    // Brand Management Routes
+    Route::get('/brands', [\App\Http\Controllers\Admin\BrandController::class, 'index'])->name('admin.brands');
+    Route::get('/api/brands', [\App\Http\Controllers\Admin\BrandController::class, 'getBrands'])->name('admin.api.brands');
+    Route::post('/api/brands', [\App\Http\Controllers\Admin\BrandController::class, 'store'])->name('admin.api.brands.store');
+    Route::put('/api/brands/{id}', [\App\Http\Controllers\Admin\BrandController::class, 'update'])->name('admin.api.brands.update');
+    Route::post('/api/brands/{id}/toggle-status', [\App\Http\Controllers\Admin\BrandController::class, 'toggleStatus'])->name('admin.api.brands.toggle-status');
+    Route::delete('/api/brands/{id}', [\App\Http\Controllers\Admin\BrandController::class, 'destroy'])->name('admin.api.brands.destroy');
 });

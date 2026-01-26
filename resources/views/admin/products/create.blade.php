@@ -132,6 +132,14 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
+                                        Thương Hiệu
+                                    </label>
+                                    <select id="product-brand" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3">
+                                        <option value="">Chọn thương hiệu...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
                                         Chất Liệu
                                     </label>
                                     <input id="product-material" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3" placeholder="VD: Kim loại, Nhựa..." type="text"/>
@@ -312,6 +320,7 @@
                 const response = await fetch('{{ route("admin.api.products.filters") }}');
                 const data = await response.json();
                 
+                // Load categories
                 const categorySelect = document.getElementById('product-category');
                 data.categories.forEach(category => {
                     const option = document.createElement('option');
@@ -319,6 +328,17 @@
                     option.textContent = category.name;
                     categorySelect.appendChild(option);
                 });
+                
+                // Load brands
+                const brandSelect = document.getElementById('product-brand');
+                if (data.brands) {
+                    data.brands.forEach(brand => {
+                        const option = document.createElement('option');
+                        option.value = brand.id;
+                        option.textContent = brand.name;
+                        brandSelect.appendChild(option);
+                    });
+                }
             } catch (error) {
                 console.error('Error loading categories:', error);
             }
@@ -462,6 +482,7 @@
             formData.append('stock_quantity', stock);
             formData.append('low_stock_threshold', document.getElementById('low-stock-threshold').value || 10);
             formData.append('category_id', category);
+            formData.append('brand_id', document.getElementById('product-brand').value || '');
             formData.append('frame_shape', frameShape);
             formData.append('frame_type', document.getElementById('frame-type').value);
             formData.append('lens_compatibility', document.getElementById('lens-compatibility').value);

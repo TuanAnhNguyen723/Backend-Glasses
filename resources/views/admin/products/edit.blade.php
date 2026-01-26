@@ -132,6 +132,14 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
+                                        Thương Hiệu
+                                    </label>
+                                    <select id="product-brand" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3">
+                                        <option value="">Chọn thương hiệu...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
                                         Chất Liệu
                                     </label>
                                     <input id="product-material" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3" placeholder="VD: Kim loại, Nhựa..." type="text"/>
@@ -254,9 +262,11 @@
         let selectedColors = [];
         const productId = {{ $product->id }};
         const productData = @json($product);
+        const productBrandId = {{ $product->brand_id ?? 'null' }};
         const productImagesData = @json($product->images);
         const productColorsData = @json($product->colors);
         const categoriesData = @json($categories);
+        const brandsData = @json($brands);
         
         // DOM elements - will be initialized on DOMContentLoaded
         let gallery, galleryGrid, uploadArea, fileInput;
@@ -335,7 +345,7 @@
             if (descriptionEl) descriptionEl.value = productData.description || '';
             if (statusEl) statusEl.value = productData.is_active ? '1' : '0';
             
-            // Category will be set after categories are loaded (handled in DOMContentLoaded)
+            // Category and Brand will be set after categories/brands are loaded (handled in DOMContentLoaded)
             
             // Set frame_type and lens_compatibility if they exist in database
             if (frameTypeEl && productData.frame_type) {
@@ -446,6 +456,25 @@
                 console.warn('Categories data is not available');
             }
             
+            // Load brands
+            const brandSelect = document.getElementById('product-brand');
+            if (brandSelect) {
+                brandSelect.innerHTML = '<option value="">Chọn thương hiệu...</option>';
+                
+                if (brandsData && Array.isArray(brandsData)) {
+                    brandsData.forEach(brand => {
+                        const option = document.createElement('option');
+                        option.value = brand.id;
+                        option.textContent = brand.name;
+                        brandSelect.appendChild(option);
+                    });
+                    
+                    console.log('Brands loaded:', brandsData.length, 'brands');
+                } else {
+                    console.warn('Brands data is not available');
+                }
+            }
+            
             return Promise.resolve();
         }
         
@@ -467,13 +496,36 @@
                 console.warn('Category option not found for ID:', categoryId);
                 // Try again after a short delay in case options are still being added
                 setTimeout(() => {
-                    const optionExists = Array.from(categoryEl.options).some(opt => opt.value == categoryId);
-                    if (optionExists) {
-                        categoryEl.value = categoryId;
-                        console.log('Category set successfully (retry) to:', categoryId);
-                    } else {
-                        console.error('Category option still not found after retry:', categoryId);
-                    }
+                    setCategoryValue(categoryId);
+                }, 100);
+                return false;
+            }
+        }
+        
+        // Set brand value after brands are loaded
+        function setBrandValue(brandId) {
+            const brandEl = document.getElementById('product-brand');
+            if (!brandEl) {
+                console.error('Brand element not found!');
+                return false;
+            }
+            
+            if (!brandId) {
+                brandEl.value = '';
+                return true;
+            }
+            
+            // Check if the option exists
+            const optionExists = Array.from(brandEl.options).some(opt => opt.value == brandId);
+            if (optionExists) {
+                brandEl.value = brandId;
+                console.log('Brand set successfully to:', brandId);
+                return true;
+            } else {
+                console.warn('Brand option not found for ID:', brandId);
+                // Try again after a short delay in case options are still being added
+                setTimeout(() => {
+                    setBrandValue(brandId);
                 }, 100);
                 return false;
             }
@@ -637,6 +689,7 @@
             formData.append('stock_quantity', stock);
             formData.append('low_stock_threshold', document.getElementById('low-stock-threshold').value || 10);
             formData.append('category_id', category);
+            formData.append('brand_id', document.getElementById('product-brand').value || '');
             formData.append('frame_shape', frameShape);
             formData.append('frame_type', document.getElementById('frame-type').value);
             formData.append('lens_compatibility', document.getElementById('lens-compatibility').value);
@@ -726,6 +779,19 @@
                 // Set category value immediately after categories are loaded
                 if (productData && productData.category_id) {
                     setCategoryValue(productData.category_id);
+                }
+                
+                // Set brand value immediately after brands are loaded
+                // Check productBrandId (from PHP), productData.brand_id, and productData.brand.id
+                const brandId = productBrandId || productData?.brand_id || productData?.brand?.id || null;
+                if (brandId) {
+                    console.log('Setting brand value:', brandId, 'From productBrandId:', productBrandId, 'From productData.brand_id:', productData?.brand_id);
+                    // Use setTimeout to ensure dropdown is fully populated
+                    setTimeout(() => {
+                        setBrandValue(brandId);
+                    }, 50);
+                } else {
+                    console.log('No brand_id found. productBrandId:', productBrandId, 'productData.brand_id:', productData?.brand_id, 'productData.brand:', productData?.brand);
                 }
                 
                 // Load product data

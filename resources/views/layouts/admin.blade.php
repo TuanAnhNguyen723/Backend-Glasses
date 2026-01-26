@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="{{ asset('css/custom.css') }}" rel="stylesheet"/>
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -26,36 +27,8 @@
         }
     </script>
     <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .active-nav-item {
-            background-color: #3994ef20;
-            color: #3994ef;
-        }
-        /* Notification Animations */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .animate-in {
-            animation: fadeIn 0.3s ease-out;
-        }
-        .fade-in {
-            animation: fadeIn 0.3s ease-out;
-        }
-        .slide-in-from-top-4 {
-            animation: fadeIn 0.3s ease-out;
-        }
-        .duration-300 {
-            animation-duration: 300ms;
-        }
+        /* Additional inline styles if needed */
+        /* Most styles have been moved to custom.css */
     </style>
     @stack('styles')
 </head>
@@ -86,6 +59,10 @@
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.products' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.products') }}">
                         <span class="material-symbols-outlined {{ $currentRoute === 'admin.products' ? 'fill-1' : 'text-[#4c739a]' }}">inventory_2</span>
                         <p class="text-sm {{ $currentRoute === 'admin.products' ? 'font-bold' : 'font-semibold' }}">Kho Hàng</p>
+                    </a>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.brands' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.brands') }}">
+                        <span class="material-symbols-outlined {{ $currentRoute === 'admin.brands' ? 'fill-1' : 'text-[#4c739a]' }}" style="font-variation-settings: 'FILL' {{ $currentRoute === 'admin.brands' ? 1 : 0 }}">branding_watermark</span>
+                        <p class="text-sm {{ $currentRoute === 'admin.brands' ? 'font-bold' : 'font-semibold' }}">Thương Hiệu</p>
                     </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors" href="#">
                         <span class="material-symbols-outlined text-[#4c739a]">shopping_bag</span>
