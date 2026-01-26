@@ -10,7 +10,7 @@ class Product extends Model
 {
     protected $fillable = [
         'sku', 'name', 'slug', 'description', 'short_description',
-        'base_price', 'compare_price', 'category_id', 'frame_shape',
+        'base_price', 'compare_price', 'category_id', 'brand_id', 'frame_shape',
         'frame_type', 'lens_compatibility', 'material', 'size', 'bridge', 'stock_quantity',
         'low_stock_threshold', 'rating_average', 'rating_count',
         'review_count', 'badge', 'is_featured', 'is_active',
@@ -29,6 +29,11 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
     }
 
     public function images(): HasMany

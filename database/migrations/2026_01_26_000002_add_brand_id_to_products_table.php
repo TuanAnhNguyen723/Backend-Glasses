@@ -11,14 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('products')) {
+        if (Schema::hasTable('products') && !Schema::hasColumn('products', 'brand_id')) {
             Schema::table('products', function (Blueprint $table) {
-                if (!Schema::hasColumn('products', 'frame_type')) {
-                    $table->string('frame_type')->nullable()->after('frame_shape');
-                }
-                if (!Schema::hasColumn('products', 'lens_compatibility')) {
-                    $table->string('lens_compatibility')->nullable()->after('frame_type');
-                }
+                $table->foreignId('brand_id')->nullable()->after('category_id')->constrained('brands')->onDelete('set null');
             });
         }
     }
@@ -29,7 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn(['frame_type', 'lens_compatibility']);
+            $table->dropForeign(['brand_id']);
+            $table->dropColumn('brand_id');
         });
     }
 };
