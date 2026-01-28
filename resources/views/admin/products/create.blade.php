@@ -205,21 +205,7 @@
                                     </select>
                                 </div>
                                 <div class="md:col-span-2">
-                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-2">
-                                        Màu Sắc Khung Có Sẵn
-                                    </label>
-                                    <div id="frame-colors-container" class="flex flex-wrap gap-3">
-                                        <!-- Default colors -->
-                                        <button type="button" class="w-10 h-10 rounded-full bg-slate-900 border-3 border-cyan-400 shadow-lg shadow-cyan-400/50 ring-4 ring-cyan-400/40 frame-color-btn active" data-color="#1e293b" data-color-name="Đen" style="background-color: #1e293b;"></button>
-                                        <button type="button" class="w-10 h-10 rounded-full bg-amber-800 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#92400e" data-color-name="Nâu" style="background-color: #92400e;"></button>
-                                        <button type="button" class="w-10 h-10 rounded-full bg-slate-400 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#94a3b8" data-color-name="Xám" style="background-color: #94a3b8;"></button>
-                                        <button type="button" class="w-10 h-10 rounded-full bg-blue-900 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#1e3a8a" data-color-name="Xanh Dương" style="background-color: #1e3a8a;"></button>
-                                        <button type="button" class="w-10 h-10 rounded-full bg-rose-200 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#fecdd3" data-color-name="Hồng" style="background-color: #fecdd3;"></button>
-                                        <button type="button" id="add-color-btn" class="w-10 h-10 rounded-full flex items-center justify-center border-2 border-dashed border-[#cfdbe7] dark:border-slate-600 text-[#4c739a] hover:text-primary hover:border-primary transition-all">
-                                            <span class="material-symbols-outlined text-sm">add</span>
-                                        </button>
-                                    </div>
-                                    <input type="hidden" id="selected-colors" name="frame_colors" value='["#1e293b"]'/>
+                                    <!-- Màu sắc sẽ được lấy theo từng ảnh (color picker trên mỗi ảnh) -->
                                 </div>
                             </div>
                         </div>
@@ -258,7 +244,7 @@
     <script>
         let uploadedImages = [];
         let primaryImageIndex = 0;
-        let selectedColors = ['#1e293b']; // Default selected color
+        let lastPickedColor = '#000000';
 
         // Tab Navigation
         function initTabs() {
@@ -378,7 +364,9 @@
                         uploadedImages.push({
                             file: file,
                             url: e.target.result,
-                            isPrimary: uploadedImages.length === 0
+                            isPrimary: uploadedImages.length === 0,
+                            // Default: use last picked color
+                            color_hex: lastPickedColor || '#000000',
                         });
                         renderGallery();
                     };
@@ -407,9 +395,28 @@
                             <span class="material-symbols-outlined text-sm">delete</span>
                         </button>
                     </div>
+                    <div class="absolute bottom-2 left-2 flex items-center gap-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-2 py-1 rounded-full border border-[#cfdbe7] dark:border-slate-700 custom-color-picker">
+                        <input type="color" data-index="${index}" class="image-color-input custom-color-input h-7 w-7 rounded-full border border-[#cfdbe7] dark:border-slate-700 bg-transparent p-0 cursor-pointer" value="${img.color_hex || '#000000'}">
+                        <span class="text-[10px] font-extrabold text-[#0d141b] dark:text-white font-mono">${(img.color_hex || '#----').toUpperCase()}</span>
+                    </div>
                     ${index === primaryImageIndex ? '<div class="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Chính</div>' : ''}
                 </div>
             `).join('');
+
+            // Bind per-image color picker
+            galleryGrid.querySelectorAll('.image-color-input').forEach((input) => {
+                input.addEventListener('input', (e) => {
+                    const idx = parseInt(e.target.dataset.index, 10);
+                    if (!Number.isNaN(idx) && uploadedImages[idx]) {
+                        const color = e.target.value;
+                        uploadedImages[idx].color_hex = color;
+                        lastPickedColor = color || lastPickedColor;
+                        // Update label without full re-render
+                        const label = e.target.parentElement?.querySelector('span');
+                        if (label) label.textContent = (color || '#----').toUpperCase();
+                    }
+                });
+            });
         }
 
         function setPrimary(index) {
@@ -474,6 +481,13 @@
                 notificationManager.error('Vui lòng tải lên ít nhất một hình ảnh', 'Lỗi xác thực');
                 return;
             }
+
+            // Require a color for each newly uploaded image (for variant mapping)
+            const missingColorIdx = uploadedImages.findIndex(img => !img.color_hex);
+            if (missingColorIdx >= 0) {
+                notificationManager.error('Vui lòng chọn màu cho tất cả ảnh đã tải lên', 'Thiếu màu cho ảnh');
+                return;
+            }
             
             // Add form data
             formData.append('name', name);
@@ -497,6 +511,13 @@
             uploadedImages.forEach((img, index) => {
                 formData.append(`images[${index}]`, img.file);
             });
+            // Derive frame colors from per-image colors
+            const uniqueColors = Array.from(new Set(uploadedImages.map(i => (i.color_hex || '').trim()).filter(Boolean)));
+            formData.append('frame_colors', JSON.stringify(uniqueColors));
+            // Send image -> color mapping (index aligned with images[])
+            formData.append('images_meta', JSON.stringify(uploadedImages.map(img => ({
+                color_hex: img.color_hex || null,
+            }))));
             
             try {
                 const response = await fetch('{{ route("admin.api.products.store") }}', {
@@ -539,96 +560,12 @@
             }
         });
 
-        // Initialize selected colors from hidden input if exists
-        function initializeSelectedColors() {
-            const hiddenInput = document.getElementById('selected-colors');
-            if (hiddenInput && hiddenInput.value) {
-                try {
-                    selectedColors = JSON.parse(hiddenInput.value);
-                } catch (e) {
-                    selectedColors = ['#1e293b'];
-                }
-            }
-            updateSelectedColorsInput();
-        }
-
-        // Frame Colors Handling
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize tabs
             initTabs();
             
             // Load categories
             loadCategories();
-            initializeSelectedColors();
-            
-            // Frame color selection
-            document.querySelectorAll('.frame-color-btn').forEach(btn => {
-                if (btn.id !== 'add-color-btn') {
-                    btn.addEventListener('click', function() {
-                        const color = this.getAttribute('data-color');
-                        const colorName = this.getAttribute('data-color-name');
-                        
-                        // Toggle selection
-                        if (this.classList.contains('active')) {
-                            // Remove color
-                            selectedColors = selectedColors.filter(c => c !== color);
-                            this.classList.remove('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                            this.classList.add('border-transparent', 'border-2');
-                        } else {
-                            // Add color
-                            selectedColors.push(color);
-                            this.classList.add('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                            this.classList.remove('border-transparent', 'border-2');
-                        }
-                        
-                        updateSelectedColorsInput();
-                    });
-                }
-            });
-            
-            // Add custom color button
-            document.getElementById('add-color-btn')?.addEventListener('click', function() {
-                const color = prompt('Nhập mã màu (hex):', '#000000');
-                if (color && /^#[0-9A-F]{6}$/i.test(color)) {
-                    addCustomColor(color);
-                } else if (color) {
-                    alert('Mã màu không hợp lệ. Vui lòng nhập mã hex (VD: #FF0000)');
-                }
-            });
         });
-
-        function addCustomColor(color) {
-            const container = document.getElementById('frame-colors-container');
-            const addBtn = document.getElementById('add-color-btn');
-            
-            const colorBtn = document.createElement('button');
-            colorBtn.type = 'button';
-            colorBtn.className = 'w-10 h-10 rounded-full border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn';
-            colorBtn.style.backgroundColor = color;
-            colorBtn.setAttribute('data-color', color);
-            colorBtn.setAttribute('data-color-name', 'Tùy chỉnh');
-            
-            colorBtn.addEventListener('click', function() {
-                if (this.classList.contains('active')) {
-                    selectedColors = selectedColors.filter(c => c !== color);
-                    this.classList.remove('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                    this.classList.add('border-transparent', 'border-2');
-                } else {
-                    selectedColors.push(color);
-                    this.classList.add('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                    this.classList.remove('border-transparent', 'border-2');
-                }
-                updateSelectedColorsInput();
-            });
-            
-            container.insertBefore(colorBtn, addBtn);
-            selectedColors.push(color);
-            colorBtn.classList.add('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-            updateSelectedColorsInput();
-        }
-
-        function updateSelectedColorsInput() {
-            document.getElementById('selected-colors').value = JSON.stringify(selectedColors);
-        }
     </script>
 @endpush

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductImage extends Model
 {
     protected $fillable = [
-        'product_id', 'image_url', 'image_path', 'alt_text', 'sort_order', 'is_primary'
+        'product_id', 'product_color_id', 'image_url', 'image_path', 'alt_text', 'sort_order', 'is_primary'
     ];
 
     protected $casts = [
@@ -18,5 +18,10 @@ class ProductImage extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function color(): BelongsTo
+    {
+        return $this->belongsTo(ProductColor::class, 'product_color_id');
     }
 }

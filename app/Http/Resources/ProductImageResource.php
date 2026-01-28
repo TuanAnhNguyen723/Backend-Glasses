@@ -32,6 +32,7 @@ class ProductImageResource extends JsonResource
             'image_url' => $imageUrl, // Always return signed URL for frontend
             'is_primary' => $this->is_primary,
             'sort_order' => $this->sort_order,
+            'product_color_id' => $this->product_color_id,
         ];
     }
 }

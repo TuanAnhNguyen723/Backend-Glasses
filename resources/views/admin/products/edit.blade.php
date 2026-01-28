@@ -205,21 +205,7 @@
                                     </select>
                                 </div>
                                 <div class="md:col-span-2">
-                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-2">
-                                        Màu Sắc Khung Có Sẵn
-                                    </label>
-                                    <div id="frame-colors-container" class="flex flex-wrap gap-3">
-                                        <!-- Default colors -->
-                                        <button type="button" class="w-10 h-10 rounded-full bg-slate-900 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#1e293b" data-color-name="Đen" style="background-color: #1e293b;"></button>
-                                        <button type="button" class="w-10 h-10 rounded-full bg-amber-800 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#92400e" data-color-name="Nâu" style="background-color: #92400e;"></button>
-                                        <button type="button" class="w-10 h-10 rounded-full bg-slate-400 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#94a3b8" data-color-name="Xám" style="background-color: #94a3b8;"></button>
-                                        <button type="button" class="w-10 h-10 rounded-full bg-blue-900 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#1e3a8a" data-color-name="Xanh Dương" style="background-color: #1e3a8a;"></button>
-                                        <button type="button" class="w-10 h-10 rounded-full bg-rose-200 border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn" data-color="#fecdd3" data-color-name="Hồng" style="background-color: #fecdd3;"></button>
-                                        <button type="button" id="add-color-btn" class="w-10 h-10 rounded-full flex items-center justify-center border-2 border-dashed border-[#cfdbe7] dark:border-slate-600 text-[#4c739a] hover:text-primary hover:border-primary transition-all">
-                                            <span class="material-symbols-outlined text-sm">add</span>
-                                        </button>
-                                    </div>
-                                    <input type="hidden" id="selected-colors" name="frame_colors" value='[]'/>
+                                    <!-- Màu sắc sẽ được lấy theo từng ảnh (color picker trên mỗi ảnh) -->
                                 </div>
                             </div>
                         </div>
@@ -255,18 +241,33 @@
 @endsection
 
 @push('scripts')
+    @php
+        $editBootstrap = array(
+            'productId' => $product->id,
+            'productBrandId' => $product->brand_id,
+            'product' => $product,
+            'productImages' => $product->images,
+            'productColors' => $product->colors,
+            'categories' => $categories,
+            'brands' => $brands,
+        );
+    @endphp
+    <script type="application/json" id="edit-product-bootstrap">
+        @json($editBootstrap)
+    </script>
     <script>
+        const __BOOTSTRAP__ = JSON.parse(document.getElementById('edit-product-bootstrap')?.textContent || '{}');
         let uploadedImages = []; // Existing images + new uploaded images
         let deletedImageIds = []; // IDs of images to delete
         let primaryImageIndex = 0;
-        let selectedColors = [];
-        const productId = {{ $product->id }};
-        const productData = @json($product);
-        const productBrandId = {{ $product->brand_id ?? 'null' }};
-        const productImagesData = @json($product->images);
-        const productColorsData = @json($product->colors);
-        const categoriesData = @json($categories);
-        const brandsData = @json($brands);
+        let lastPickedColor = '#000000';
+        const productId = __BOOTSTRAP__.productId;
+        const productData = __BOOTSTRAP__.product;
+        const productBrandId = __BOOTSTRAP__.productBrandId;
+        const productImagesData = __BOOTSTRAP__.productImages;
+        const productColorsData = __BOOTSTRAP__.productColors;
+        const categoriesData = __BOOTSTRAP__.categories;
+        const brandsData = __BOOTSTRAP__.brands;
         
         // DOM elements - will be initialized on DOMContentLoaded
         let gallery, galleryGrid, uploadArea, fileInput;
@@ -358,11 +359,21 @@
             // Load existing images
             console.log('Loading images...', productImagesData);
             if (productImagesData && Array.isArray(productImagesData) && productImagesData.length > 0) {
+                const colorHexById = {};
+                if (productColorsData && Array.isArray(productColorsData)) {
+                    productColorsData.forEach(c => {
+                        const id = c?.id;
+                        const hex = c?.hex_code;
+                        if (id && hex) colorHexById[id] = hex;
+                    });
+                }
                 uploadedImages = productImagesData.map((img) => ({
                     id: img.id,
                     url: img.image_url || img.url,
                     isPrimary: img.is_primary || false,
-                    isExisting: true
+                    isExisting: true,
+                    product_color_id: img.product_color_id ?? null,
+                    color_hex: (img.product_color_id && colorHexById[img.product_color_id]) ? colorHexById[img.product_color_id] : null,
                 }));
                 
                 // Find primary image index
@@ -381,56 +392,10 @@
             // Load colors
             console.log('Loading colors...', productColorsData);
             if (productColorsData && Array.isArray(productColorsData) && productColorsData.length > 0) {
-                selectedColors = productColorsData.map(c => c.hex_code || c);
-                updateSelectedColorsInput();
-                renderColors();
+                // Set default last picked color from first available color
+                const first = productColorsData[0]?.hex_code;
+                if (first) lastPickedColor = first;
             }
-        }
-
-        // Render colors
-        function renderColors() {
-            const container = document.getElementById('frame-colors-container');
-            const addBtn = document.getElementById('add-color-btn');
-            
-            // Clear existing color buttons (except add button)
-            container.querySelectorAll('.frame-color-btn').forEach(btn => {
-                if (btn.id !== 'add-color-btn') {
-                    btn.remove();
-                }
-            });
-            
-            const colorNames = {
-                '#1e293b': 'Đen',
-                '#92400e': 'Nâu',
-                '#94a3b8': 'Xám',
-                '#1e3a8a': 'Xanh Dương',
-                '#fecdd3': 'Hồng',
-            };
-            
-            // Render selected colors
-            selectedColors.forEach(color => {
-                const colorBtn = document.createElement('button');
-                colorBtn.type = 'button';
-                colorBtn.className = 'w-10 h-10 rounded-full border-3 border-cyan-400 shadow-lg shadow-cyan-400/50 ring-4 ring-cyan-400/40 frame-color-btn active';
-                colorBtn.style.backgroundColor = color;
-                colorBtn.setAttribute('data-color', color);
-                colorBtn.setAttribute('data-color-name', colorNames[color] || 'Tùy chỉnh');
-                
-                colorBtn.addEventListener('click', function() {
-                    if (this.classList.contains('active')) {
-                        selectedColors = selectedColors.filter(c => c !== color);
-                        this.classList.remove('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                        this.classList.add('border-transparent', 'border-2');
-                    } else {
-                        selectedColors.push(color);
-                        this.classList.add('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                        this.classList.remove('border-transparent', 'border-2');
-                    }
-                    updateSelectedColorsInput();
-                });
-                
-                container.insertBefore(colorBtn, addBtn);
-            });
         }
 
         // Load categories from server-side data
@@ -573,7 +538,8 @@
                             file: file,
                             url: e.target.result,
                             isPrimary: false,
-                            isExisting: false
+                            isExisting: false,
+                            color_hex: lastPickedColor || '#000000',
                         });
                         renderGallery();
                     };
@@ -616,12 +582,30 @@
                                 <span class="material-symbols-outlined text-sm">delete</span>
                             </button>
                         </div>
+                        <div class="absolute bottom-2 left-2 flex items-center gap-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-2 py-1 rounded-full border border-[#cfdbe7] dark:border-slate-700">
+                            <input type="color" data-index="${index}" class="image-color-input custom-color-input h-7 w-7 rounded-full border border-[#cfdbe7] dark:border-slate-700 bg-transparent p-0 cursor-pointer" value="${img.color_hex || '#000000'}">
+                            <span class="text-[10px] font-extrabold text-[#0d141b] dark:text-white font-mono">${(img.color_hex || '#----').toUpperCase()}</span>
+                        </div>
                         ${isPrimary ? '<div class="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Chính</div>' : ''}
                         ${img.isExisting ? '<div class="absolute top-2 right-2 bg-slate-700 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Cũ</div>' : ''}
                     </div>
                 `;
             }).join('');
             console.log('Gallery rendered');
+
+            // Bind per-image color picker
+            galleryGrid.querySelectorAll('.image-color-input').forEach((input) => {
+                input.addEventListener('input', (e) => {
+                    const idx = parseInt(e.target.dataset.index, 10);
+                    if (!Number.isNaN(idx) && uploadedImages[idx]) {
+                        const color = e.target.value;
+                        uploadedImages[idx].color_hex = color;
+                        lastPickedColor = color || lastPickedColor;
+                        const label = e.target.parentElement?.querySelector('span');
+                        if (label) label.textContent = (color || '#----').toUpperCase();
+                    }
+                });
+            });
         }
 
         function setPrimary(index) {
@@ -701,24 +685,47 @@
             formData.append('badge', document.getElementById('product-badge').value);
             formData.append('description', document.getElementById('product-description').value);
             formData.append('is_active', document.getElementById('product-status').value);
-            formData.append('frame_colors', document.getElementById('selected-colors').value || JSON.stringify(selectedColors));
             
             // Add deleted images
             if (deletedImageIds.length > 0) {
                 formData.append('deleted_images', JSON.stringify(deletedImageIds));
             }
+
+            // Derive frame colors from per-image colors (existing + new)
+            const allColors = uploadedImages.map(i => (i.color_hex || '').trim()).filter(Boolean);
+            const uniqueColors = Array.from(new Set(allColors));
+            formData.append('frame_colors', JSON.stringify(uniqueColors));
             
             // Add new images (only files, not existing images)
             const newImages = uploadedImages.filter(img => !img.isExisting);
             if (newImages.length > 0) {
+                const missingColor = newImages.some(img => !img.color_hex);
+                if (missingColor) {
+                    notificationManager.error('Vui lòng chọn màu cho tất cả ảnh mới', 'Thiếu màu cho ảnh');
+                    return;
+                }
+
                 formData.append('primary_image_index', primaryImageIndex);
                 newImages.forEach((img, index) => {
                     formData.append(`images[${index}]`, img.file);
                 });
+                // Meta aligned with images[] (newImages order)
+                formData.append('images_meta', JSON.stringify(newImages.map(img => ({
+                    color_hex: img.color_hex || null,
+                }))));
             } else {
                 // If no new images, set primary from existing images
                 formData.append('primary_image_index', primaryImageIndex);
             }
+
+            // Existing images mapping
+            const existingMeta = uploadedImages
+                .filter(img => img.isExisting && img.id)
+                .map(img => ({
+                    id: img.id,
+                    color_hex: img.color_hex || null,
+                }));
+            formData.append('existing_images_meta', JSON.stringify(existingMeta));
             
             try {
                 const response = await fetch('{{ route("admin.api.products.update", $product->id) }}', {
@@ -759,11 +766,6 @@
             }
         });
 
-        function updateSelectedColorsInput() {
-            document.getElementById('selected-colors').value = JSON.stringify(selectedColors);
-        }
-
-        // Frame Colors Handling
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing...');
             console.log('Product data:', productData);
@@ -806,66 +808,6 @@
                 loadProductData();
             });
             
-            // Frame color selection for default buttons
-            document.querySelectorAll('.frame-color-btn').forEach(btn => {
-                if (btn.id !== 'add-color-btn') {
-                    btn.addEventListener('click', function() {
-                        const color = this.getAttribute('data-color');
-                        
-                        if (this.classList.contains('active')) {
-                            selectedColors = selectedColors.filter(c => c !== color);
-                            this.classList.remove('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                            this.classList.add('border-transparent', 'border-2');
-                        } else {
-                            selectedColors.push(color);
-                            this.classList.add('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                            this.classList.remove('border-transparent', 'border-2');
-                        }
-                        
-                        updateSelectedColorsInput();
-                    });
-                }
-            });
-            
-            // Add custom color button
-            document.getElementById('add-color-btn')?.addEventListener('click', function() {
-                const color = prompt('Nhập mã màu (hex):', '#000000');
-                if (color && /^#[0-9A-F]{6}$/i.test(color)) {
-                    addCustomColor(color);
-                } else if (color) {
-                    alert('Mã màu không hợp lệ. Vui lòng nhập mã hex (VD: #FF0000)');
-                }
-            });
         });
-
-        function addCustomColor(color) {
-            const container = document.getElementById('frame-colors-container');
-            const addBtn = document.getElementById('add-color-btn');
-            
-            const colorBtn = document.createElement('button');
-            colorBtn.type = 'button';
-            colorBtn.className = 'w-10 h-10 rounded-full border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all frame-color-btn';
-            colorBtn.style.backgroundColor = color;
-            colorBtn.setAttribute('data-color', color);
-            colorBtn.setAttribute('data-color-name', 'Tùy chỉnh');
-            
-            colorBtn.addEventListener('click', function() {
-                if (this.classList.contains('active')) {
-                    selectedColors = selectedColors.filter(c => c !== color);
-                    this.classList.remove('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                    this.classList.add('border-transparent', 'border-2');
-                } else {
-                    selectedColors.push(color);
-                    this.classList.add('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-                    this.classList.remove('border-transparent', 'border-2');
-                }
-                updateSelectedColorsInput();
-            });
-            
-            container.insertBefore(colorBtn, addBtn);
-            selectedColors.push(color);
-            colorBtn.classList.add('active', 'border-cyan-400', 'border-3', 'ring-4', 'ring-cyan-400/40', 'shadow-lg', 'shadow-cyan-400/50');
-            updateSelectedColorsInput();
-        }
     </script>
 @endpush

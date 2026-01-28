@@ -518,3 +518,41 @@
 /* ============================================
    End of Custom CSS
    ============================================ */
+
+/* ============================================
+   Color Picker (Admin Products)
+   Make input[type=color] swatch circular
+   ============================================ */
+.custom-color-input {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.custom-color-input:hover {
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+/* Chromium (Chrome/Edge) */
+.custom-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 9999px;
+}
+
+.custom-color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 9999px;
+}
+
+/* Firefox */
+.custom-color-input::-moz-color-swatch {
+    border: none;
+    border-radius: 9999px;
+}
+
+.custom-color-picker {
+    display: flex;
+    align-items: center;
+}

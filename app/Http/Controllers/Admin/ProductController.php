@@ -122,6 +122,7 @@ class ProductController extends Controller
                     'id' => $img->id,
                     'url' => $url,
                     'is_primary' => $img->is_primary,
+                    'product_color_id' => $img->product_color_id,
                 ];
             }),
             'colors' => $product->colors->pluck('hex_code')->toArray(),
@@ -148,6 +149,7 @@ class ProductController extends Controller
                 'is_active' => 'nullable|boolean',
                 'primary_image_index' => 'nullable|integer',
                 'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+                'images_meta' => 'nullable|string', // JSON array mapping images -> color_hex
             ], [
                 'name.required' => 'Tên sản phẩm là bắt buộc',
                 'sku.required' => 'SKU là bắt buộc',
@@ -201,6 +203,46 @@ class ProductController extends Controller
             ], 500);
         }
 
+        // Handle frame colors FIRST (so we can map hex -> product_color_id for images)
+        $colorIdByHex = [];
+        if ($request->has('frame_colors')) {
+            $frameColors = json_decode($request->input('frame_colors'), true);
+            if (is_array($frameColors)) {
+                $colorNames = [
+                    '#1e293b' => 'Đen',
+                    '#92400e' => 'Nâu',
+                    '#94a3b8' => 'Xám',
+                    '#1e3a8a' => 'Xanh Dương',
+                    '#fecdd3' => 'Hồng',
+                ];
+
+                foreach ($frameColors as $index => $hexCode) {
+                    if (!is_string($hexCode) || empty($hexCode)) continue;
+                    $hexCode = strtoupper($hexCode);
+                    $colorName = $colorNames[$hexCode] ?? $colorNames[strtolower($hexCode)] ?? 'Tùy chỉnh';
+
+                    $color = ProductColor::create([
+                        'product_id' => $product->id,
+                        'name' => $colorName,
+                        'hex_code' => $hexCode,
+                        'price_adjustment' => 0,
+                        'stock_quantity' => $product->stock_quantity, // default
+                        'is_active' => true,
+                        'sort_order' => $index + 1,
+                    ]);
+
+                    $colorIdByHex[strtoupper($hexCode)] = $color->id;
+                }
+            }
+        }
+
+        // Parse images meta (index-aligned with request->file('images'))
+        $imagesMeta = [];
+        if ($request->filled('images_meta')) {
+            $decoded = json_decode($request->input('images_meta'), true);
+            if (is_array($decoded)) $imagesMeta = $decoded;
+        }
+
         // Handle image uploads
         if ($request->hasFile('images')) {
             $primarySet = false;
@@ -209,6 +251,15 @@ class ProductController extends Controller
             foreach ($request->file('images') as $index => $image) {
                 try {
                     $isPrimary = ($index == $primaryIndex) && !$primarySet;
+
+                    // Determine color for this image (optional but recommended)
+                    $meta = $imagesMeta[$index] ?? null;
+                    $hex = null;
+                    if (is_array($meta)) {
+                        $hex = $meta['color_hex'] ?? $meta['hex_code'] ?? $meta['color'] ?? null;
+                    }
+                    $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
+                    $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
                     
                     // Generate unique filename
                     $originalName = $image->getClientOriginalName();
@@ -228,6 +279,7 @@ class ProductController extends Controller
                     $product->images()->create([
                         'image_path' => $imagePath, // Store path in database
                         'image_url' => $signedUrl, // Store signed URL for display
+                        'product_color_id' => $productColorId,
                         'is_primary' => $isPrimary,
                         'alt_text' => $product->name,
                         'sort_order' => $index,
@@ -248,33 +300,6 @@ class ProductController extends Controller
                 $firstImage = $product->images()->orderBy('sort_order')->first();
                 if ($firstImage instanceof \App\Models\ProductImage) {
                     $firstImage->update(['is_primary' => true]);
-                }
-            }
-        }
-
-        // Handle frame colors
-        if ($request->has('frame_colors')) {
-            $frameColors = json_decode($request->input('frame_colors'), true);
-            if (is_array($frameColors)) {
-                $colorNames = [
-                    '#1e293b' => 'Đen',
-                    '#92400e' => 'Nâu',
-                    '#94a3b8' => 'Xám',
-                    '#1e3a8a' => 'Xanh Dương',
-                    '#fecdd3' => 'Hồng',
-                ];
-                
-                foreach ($frameColors as $index => $hexCode) {
-                    $colorName = $colorNames[$hexCode] ?? 'Tùy chỉnh';
-                    ProductColor::create([
-                        'product_id' => $product->id,
-                        'name' => $colorName,
-                        'hex_code' => $hexCode,
-                        'price_adjustment' => 0,
-                        'stock_quantity' => $product->stock_quantity, // Use product stock as default
-                        'is_active' => true,
-                        'sort_order' => $index + 1,
-                    ]);
                 }
             }
         }
@@ -482,6 +507,8 @@ class ProductController extends Controller
                 'primary_image_index' => 'nullable|integer',
                 'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
                 'deleted_images' => 'nullable|string', // JSON array of image IDs to delete
+                'images_meta' => 'nullable|string', // JSON array mapping NEW images -> color_hex (index aligned)
+                'existing_images_meta' => 'nullable|string', // JSON array mapping existing image id -> color_hex
             ], [
                 'name.required' => 'Tên sản phẩm là bắt buộc',
                 'sku.required' => 'SKU là bắt buộc',
@@ -591,8 +618,50 @@ class ProductController extends Controller
             }
         }
 
+        // Handle frame colors update (do this BEFORE image uploads so we can map hex -> id)
+        if ($request->has('frame_colors')) {
+            // Delete existing colors
+            $product->colors()->delete();
+            
+            $frameColors = json_decode($request->input('frame_colors'), true);
+            if (is_array($frameColors)) {
+                $colorNames = [
+                    '#1e293b' => 'Đen',
+                    '#92400e' => 'Nâu',
+                    '#94a3b8' => 'Xám',
+                    '#1e3a8a' => 'Xanh Dương',
+                    '#fecdd3' => 'Hồng',
+                ];
+                
+                foreach ($frameColors as $index => $hexCode) {
+                    $colorName = $colorNames[$hexCode] ?? 'Tùy chỉnh';
+                    ProductColor::create([
+                        'product_id' => $product->id,
+                        'name' => $colorName,
+                        'hex_code' => $hexCode,
+                        'price_adjustment' => 0,
+                        'stock_quantity' => $product->stock_quantity,
+                        'is_active' => true,
+                        'sort_order' => $index + 1,
+                    ]);
+                }
+            }
+        }
+
         // Handle new image uploads
         if ($request->hasFile('images')) {
+            // Build color map from current colors (after potential update below)
+            $colorIdByHex = $product->colors()->pluck('id', 'hex_code')->mapWithKeys(function ($id, $hex) {
+                return [strtoupper($hex) => $id];
+            })->toArray();
+
+            // Parse meta for new images (index aligned with $request->file('images'))
+            $imagesMeta = [];
+            if ($request->filled('images_meta')) {
+                $decoded = json_decode($request->input('images_meta'), true);
+                if (is_array($decoded)) $imagesMeta = $decoded;
+            }
+
             $primarySet = false;
             $primaryIndex = (int)$request->input('primary_image_index', 0);
             $existingImagesCount = $product->images()->count();
@@ -600,6 +669,14 @@ class ProductController extends Controller
             foreach ($request->file('images') as $index => $image) {
                 try {
                     $isPrimary = ($index == $primaryIndex) && !$primarySet;
+
+                    $meta = $imagesMeta[$index] ?? null;
+                    $hex = null;
+                    if (is_array($meta)) {
+                        $hex = $meta['color_hex'] ?? $meta['hex_code'] ?? $meta['color'] ?? null;
+                    }
+                    $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
+                    $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
                     
                     // Generate unique filename
                     $originalName = $image->getClientOriginalName();
@@ -617,7 +694,9 @@ class ProductController extends Controller
                     $signedUrl = $this->getSignedUrl($imagePath, 10080); // 1 week = 10080 minutes
                     
                     $newImage = $product->images()->create([
+                        'image_path' => $imagePath,
                         'image_url' => $signedUrl, // Store signed URL in database
+                        'product_color_id' => $productColorId,
                         'is_primary' => $isPrimary,
                         'alt_text' => $product->name,
                         'sort_order' => $existingImagesCount + $index,
@@ -647,32 +726,26 @@ class ProductController extends Controller
             }
         }
 
-        // Handle frame colors update
-        if ($request->has('frame_colors')) {
-            // Delete existing colors
-            $product->colors()->delete();
-            
-            $frameColors = json_decode($request->input('frame_colors'), true);
-            if (is_array($frameColors)) {
-                $colorNames = [
-                    '#1e293b' => 'Đen',
-                    '#92400e' => 'Nâu',
-                    '#94a3b8' => 'Xám',
-                    '#1e3a8a' => 'Xanh Dương',
-                    '#fecdd3' => 'Hồng',
-                ];
-                
-                foreach ($frameColors as $index => $hexCode) {
-                    $colorName = $colorNames[$hexCode] ?? 'Tùy chỉnh';
-                    ProductColor::create([
-                        'product_id' => $product->id,
-                        'name' => $colorName,
-                        'hex_code' => $hexCode,
-                        'price_adjustment' => 0,
-                        'stock_quantity' => $product->stock_quantity,
-                        'is_active' => true,
-                        'sort_order' => $index + 1,
-                    ]);
+        // Update existing image -> color mapping (after colors update)
+        if ($request->filled('existing_images_meta')) {
+            $decoded = json_decode($request->input('existing_images_meta'), true);
+            if (is_array($decoded)) {
+                $colorIdByHex = $product->colors()->pluck('id', 'hex_code')->mapWithKeys(function ($id, $hex) {
+                    return [strtoupper($hex) => $id];
+                })->toArray();
+
+                foreach ($decoded as $row) {
+                    if (!is_array($row)) continue;
+                    $imageId = $row['id'] ?? null;
+                    $hex = $row['color_hex'] ?? $row['hex_code'] ?? $row['color'] ?? null;
+                    $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
+                    $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
+
+                    if (!$imageId) continue;
+                    $img = ProductImage::where('product_id', $product->id)->where('id', $imageId)->first();
+                    if ($img) {
+                        $img->update(['product_color_id' => $productColorId]);
+                    }
                 }
             }
         }
