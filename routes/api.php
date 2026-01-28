@@ -20,6 +20,7 @@ Route::prefix('v1')->group(function () {
     // Products
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{id}', [ProductController::class, 'show']);
+    Route::get('/products/related', [ProductController::class, 'related']);
     Route::get('/categories', [ProductController::class, 'categories']);
     
     // Reviews

@@ -13,6 +13,7 @@ class LensOptionResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'price' => $this->price,
+            'price_change' => $this->price,
             'is_active' => $this->is_active,
         ];
     }

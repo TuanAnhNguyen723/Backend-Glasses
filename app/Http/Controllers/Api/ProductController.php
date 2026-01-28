@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
+use App\Http\Resources\RelatedProductResource;
 use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Http\Request;
@@ -51,10 +52,37 @@ class ProductController extends Controller
             'images',
             'colors',
             'lensOptions',
-            'reviews.user'
+            'primaryImage',
         ])->active()->findOrFail($id);
 
         return new ProductResource($product);
+    }
+
+    public function related(Request $request)
+    {
+        $validated = $request->validate([
+            'category_id' => 'required|integer|exists:categories,id',
+            'exclude_id' => 'nullable|integer',
+            'limit' => 'nullable|integer|min:1|max:20',
+        ]);
+
+        $limit = $validated['limit'] ?? 8;
+
+        $query = Product::with(['category', 'images', 'primaryImage'])
+            ->active()
+            ->where('category_id', $validated['category_id']);
+
+        if (!empty($validated['exclude_id'])) {
+            $query->where('id', '!=', $validated['exclude_id']);
+        }
+
+        $products = $query
+            ->orderBy('sort_order')
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
+
+        return RelatedProductResource::collection($products);
     }
 
     public function categories(Request $request)
