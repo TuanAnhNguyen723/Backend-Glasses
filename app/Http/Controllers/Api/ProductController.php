@@ -85,6 +85,31 @@ class ProductController extends Controller
         return RelatedProductResource::collection($products);
     }
 
+    public function toggleFeatured(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+
+        $validated = $request->validate([
+            'is_featured' => 'nullable|boolean',
+        ]);
+
+        if (array_key_exists('is_featured', $validated)) {
+            $product->is_featured = (bool) $validated['is_featured'];
+        } else {
+            $product->is_featured = ! $product->is_featured;
+        }
+
+        $product->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $product->id,
+                'is_featured' => $product->is_featured,
+            ],
+        ]);
+    }
+
     public function categories(Request $request)
     {
         $includeChildren = $request->boolean('include_children', true);
