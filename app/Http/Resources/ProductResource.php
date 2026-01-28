@@ -4,11 +4,32 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Generate fresh signed URL for primary image
+        $primaryImageUrl = null;
+        if ($this->primaryImage) {
+            if ($this->primaryImage->image_path) {
+                try {
+                    // Generate fresh signed URL (valid for 1 week - max allowed)
+                    $primaryImageUrl = Storage::disk('backblaze')->temporaryUrl(
+                        $this->primaryImage->image_path,
+                        now()->addWeek() // 1 week is the maximum for AWS S3 signed URLs
+                    );
+                } catch (\Exception $e) {
+                    // Fallback to stored URL if signed URL generation fails
+                    $primaryImageUrl = $this->primaryImage->image_url ?? null;
+                    \Log::warning('Failed to generate signed URL for primary image: ' . $e->getMessage());
+                }
+            } else {
+                $primaryImageUrl = $this->primaryImage->image_url ?? null;
+            }
+        }
+        
         return [
             'id' => $this->id,
             'sku' => $this->sku,
@@ -36,7 +57,7 @@ class ProductResource extends JsonResource
             'badge' => $this->badge,
             'is_featured' => $this->is_featured,
             'images' => ProductImageResource::collection($this->whenLoaded('images')),
-            'primary_image' => $this->primaryImage ? $this->primaryImage->image_url : null,
+            'primary_image' => $primaryImageUrl, // Always return fresh signed URL
             'colors' => ProductColorResource::collection($this->whenLoaded('colors')),
             'lens_options' => LensOptionResource::collection($this->whenLoaded('lensOptions')),
             'created_at' => $this->created_at,

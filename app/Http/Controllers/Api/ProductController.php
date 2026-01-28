@@ -57,8 +57,49 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
-    public function categories()
+    public function categories(Request $request)
     {
-        return Category::with('products')->get();
+        $includeChildren = $request->boolean('include_children', true);
+        $withProducts = $request->boolean('with_products', false);
+
+        $query = Category::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->withCount([
+                'products as products_count' => function ($q) {
+                    $q->where('is_active', true);
+                }
+            ]);
+
+        // Optional: include products (only when explicitly requested)
+        if ($withProducts) {
+            $query->with(['products' => function ($q) {
+                $q->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('created_at', 'desc')
+                    ->select(['id', 'category_id', 'sku', 'name', 'slug', 'base_price', 'compare_price', 'is_active']);
+            }]);
+        }
+
+        // Optional: include children categories
+        if ($includeChildren) {
+            $query->with(['children' => function ($q) {
+                $q->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name');
+            }]);
+        }
+
+        $categories = $query->get(['id', 'name', 'slug', 'description', 'parent_id', 'sort_order', 'is_active']);
+
+        // Return only top-level categories when including children
+        if ($includeChildren) {
+            $categories = $categories->whereNull('parent_id')->values();
+        }
+
+        return response()->json([
+            'data' => $categories,
+        ]);
     }
 }

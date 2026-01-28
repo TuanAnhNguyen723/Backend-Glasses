@@ -8,8 +8,10 @@ use App\Models\Category;
 use App\Models\Brand;
 use App\Models\ProductColor;
 use App\Models\ProductImage;
+use Aws\S3\S3Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -28,6 +30,31 @@ class ProductController extends Controller
     public function edit($id)
     {
         $product = Product::with(['category', 'brand', 'images', 'colors'])->findOrFail($id);
+        
+        // Generate fresh signed URLs for existing images
+        foreach ($product->images as $image) {
+            if ($image->image_path) {
+                try {
+                    // Generate fresh signed URL from path (valid for 1 week - max allowed)
+                    $image->image_url = Storage::disk('backblaze')->temporaryUrl(
+                        $image->image_path,
+                        now()->addWeek() // 1 week is the maximum for AWS S3 signed URLs
+                    );
+                } catch (\Exception $e) {
+                    // If signed URL generation fails, keep the existing URL or try to generate from image_url
+                    \Log::warning('Failed to generate signed URL for image: ' . $e->getMessage());
+                    // If image_url exists but is expired, try to extract path and regenerate
+                    if ($image->image_url && strpos($image->image_url, 'http') === 0) {
+                        // Keep existing URL as fallback
+                    }
+                }
+            } elseif ($image->image_url) {
+                // If no image_path but has image_url, check if it's a valid URL
+                // For old images without image_path, we'll use the stored URL
+                // In the future, you may want to migrate old URLs to extract paths
+            }
+        }
+        
         $categories = Category::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -43,7 +70,23 @@ class ProductController extends Controller
         
         $primaryImage = $product->images->where('is_primary', true)->first() 
             ?? $product->images->first();
-        $imageUrl = $primaryImage ? $primaryImage->image_url : 'https://via.placeholder.com/100';
+        
+        // Generate signed URL from path if available, otherwise use stored URL
+        $imageUrl = 'https://via.placeholder.com/100';
+        if ($primaryImage) {
+            if ($primaryImage->image_path) {
+                try {
+                    $imageUrl = Storage::disk('backblaze')->temporaryUrl(
+                        $primaryImage->image_path,
+                        now()->addHour()
+                    );
+                } catch (\Exception $e) {
+                    $imageUrl = $primaryImage->image_url ?? $imageUrl;
+                }
+            } else {
+                $imageUrl = $primaryImage->image_url ?? $imageUrl;
+            }
+        }
         
         return response()->json([
             'id' => $product->id,
@@ -62,9 +105,22 @@ class ProductController extends Controller
             'is_active' => $product->is_active,
             'image_url' => $imageUrl,
             'images' => $product->images->map(function($img) {
+                // Generate fresh signed URL from path
+                $url = $img->image_url; // Fallback to stored URL
+                if ($img->image_path) {
+                    try {
+                        $url = Storage::disk('backblaze')->temporaryUrl(
+                            $img->image_path,
+                            now()->addHour()
+                        );
+                    } catch (\Exception $e) {
+                        // Use stored URL if signed URL generation fails
+                    }
+                }
+                
                 return [
                     'id' => $img->id,
-                    'url' => $img->image_url,
+                    'url' => $url,
                     'is_primary' => $img->is_primary,
                 ];
             }),
@@ -150,32 +206,40 @@ class ProductController extends Controller
             $primarySet = false;
             $primaryIndex = (int)$request->input('primary_image_index', 0);
             
-            // Create directory if not exists
-            $uploadDir = public_path('uploads/products');
-            if (!file_exists($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-            
             foreach ($request->file('images') as $index => $image) {
-                $isPrimary = ($index == $primaryIndex) && !$primarySet;
-                
-                // Generate unique filename
-                $extension = $image->getClientOriginalExtension();
-                $filename = $product->id . '_' . time() . '_' . $index . '.' . $extension;
-                $filePath = $uploadDir . '/' . $filename;
-                
-                // Move uploaded file
-                $image->move($uploadDir, $filename);
-                
-                $product->images()->create([
-                    'image_url' => '/uploads/products/' . $filename,
-                    'is_primary' => $isPrimary,
-                    'alt_text' => $product->name,
-                    'sort_order' => $index,
-                ]);
-                
-                if ($isPrimary) {
-                    $primarySet = true;
+                try {
+                    $isPrimary = ($index == $primaryIndex) && !$primarySet;
+                    
+                    // Generate unique filename
+                    $originalName = $image->getClientOriginalName();
+                    $extension = $image->getClientOriginalExtension();
+                    $nameWithoutExtension = pathinfo($originalName, PATHINFO_FILENAME);
+                    $cleanName = Str::slug($nameWithoutExtension, '_');
+                    $uniqueName = $cleanName . '_' . $product->id . '_' . time() . '_' . $index . '.' . $extension;
+                    $fileName = 'products/' . $uniqueName;
+                    
+                    // Upload to Backblaze B2 using helper method
+                    // Returns path, not URL (for private buckets)
+                    $imagePath = $this->uploadToBackblaze($image, $fileName);
+                    
+                    // Generate signed URL (valid for 1 week - max allowed by AWS S3) for display
+                    $signedUrl = $this->getSignedUrl($imagePath, 10080); // 1 week = 10080 minutes
+                    
+                    $product->images()->create([
+                        'image_path' => $imagePath, // Store path in database
+                        'image_url' => $signedUrl, // Store signed URL for display
+                        'is_primary' => $isPrimary,
+                        'alt_text' => $product->name,
+                        'sort_order' => $index,
+                    ]);
+                    
+                    if ($isPrimary) {
+                        $primarySet = true;
+                    }
+                } catch (\Exception $e) {
+                    // Log error but continue with next image
+                    \Log::error('Error uploading image to Backblaze: ' . $e->getMessage());
+                    continue;
                 }
             }
             
@@ -282,7 +346,24 @@ class ProductController extends Controller
         $products->getCollection()->transform(function($product) {
             $primaryImage = $product->images->where('is_primary', true)->first() 
                 ?? $product->images->first();
-            $imageUrl = $primaryImage ? $primaryImage->image_url : 'https://via.placeholder.com/100';
+            
+            // Generate signed URL from path if available
+            $imageUrl = 'https://via.placeholder.com/100';
+            if ($primaryImage) {
+                if ($primaryImage->image_path) {
+                    try {
+                        // Use Storage facade to generate signed URL
+                        $imageUrl = Storage::disk('backblaze')->temporaryUrl(
+                            $primaryImage->image_path,
+                            now()->addHour()
+                        );
+                    } catch (\Exception $e) {
+                        $imageUrl = $primaryImage->image_url ?? $imageUrl;
+                    }
+                } else {
+                    $imageUrl = $primaryImage->image_url ?? $imageUrl;
+                }
+            }
             
             // Tính % tồn kho
             $stockPercentage = $product->low_stock_threshold > 0 
@@ -474,10 +555,35 @@ class ProductController extends Controller
                 foreach ($deletedImageIds as $imageId) {
                     $image = ProductImage::find($imageId);
                     if ($image && $image->product_id == $product->id) {
-                        // Delete file from storage
-                        $filePath = public_path($image->image_url);
-                        if (file_exists($filePath)) {
-                            unlink($filePath);
+                        // Delete file from Backblaze
+                        try {
+                            // Use image_path if available, otherwise try to extract from image_url
+                            $path = $image->image_path;
+                            
+                            if (empty($path)) {
+                                // Fallback: try to extract path from URL
+                                $imageUrl = $image->image_url;
+                                if (strpos($imageUrl, 'http') === 0) {
+                                    $parsedUrl = parse_url($imageUrl);
+                                    $path = ltrim($parsedUrl['path'] ?? '', '/');
+                                    
+                                    // Remove bucket name from path if present
+                                    $bucketName = env('AWS_BUCKET');
+                                    if (strpos($path, $bucketName . '/') === 0) {
+                                        $path = substr($path, strlen($bucketName) + 1);
+                                    }
+                                } else {
+                                    $path = $imageUrl;
+                                }
+                            }
+                            
+                            // Delete from Backblaze
+                            if (!empty($path)) {
+                                Storage::disk('backblaze')->delete($path);
+                            }
+                        } catch (\Exception $e) {
+                            // Log error but continue deletion
+                            \Log::warning('Failed to delete image from Backblaze: ' . $e->getMessage());
                         }
                         $image->delete();
                     }
@@ -491,35 +597,42 @@ class ProductController extends Controller
             $primaryIndex = (int)$request->input('primary_image_index', 0);
             $existingImagesCount = $product->images()->count();
             
-            // Create directory if not exists
-            $uploadDir = public_path('uploads/products');
-            if (!file_exists($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-            
             foreach ($request->file('images') as $index => $image) {
-                $isPrimary = ($index == $primaryIndex) && !$primarySet;
-                
-                // Generate unique filename
-                $extension = $image->getClientOriginalExtension();
-                $filename = $product->id . '_' . time() . '_' . ($existingImagesCount + $index) . '.' . $extension;
-                $filePath = $uploadDir . '/' . $filename;
-                
-                // Move uploaded file
-                $image->move($uploadDir, $filename);
-                
-                $product->images()->create([
-                    'image_url' => '/uploads/products/' . $filename,
-                    'is_primary' => $isPrimary,
-                    'alt_text' => $product->name,
-                    'sort_order' => $existingImagesCount + $index,
-                ]);
-                
-                if ($isPrimary) {
-                    // Unset other primary images
-                    $product->images()->where('id', '!=', $product->images()->latest()->first()->id)
-                        ->update(['is_primary' => false]);
-                    $primarySet = true;
+                try {
+                    $isPrimary = ($index == $primaryIndex) && !$primarySet;
+                    
+                    // Generate unique filename
+                    $originalName = $image->getClientOriginalName();
+                    $extension = $image->getClientOriginalExtension();
+                    $nameWithoutExtension = pathinfo($originalName, PATHINFO_FILENAME);
+                    $cleanName = Str::slug($nameWithoutExtension, '_');
+                    $uniqueName = $cleanName . '_' . $product->id . '_' . time() . '_' . ($existingImagesCount + $index) . '.' . $extension;
+                    $fileName = 'products/' . $uniqueName;
+                    
+                    // Upload to Backblaze B2 using helper method
+                    // Returns path, not URL (for private buckets)
+                    $imagePath = $this->uploadToBackblaze($image, $fileName);
+                    
+                    // Generate signed URL (valid for 1 week - max allowed by AWS S3)
+                    $signedUrl = $this->getSignedUrl($imagePath, 10080); // 1 week = 10080 minutes
+                    
+                    $newImage = $product->images()->create([
+                        'image_url' => $signedUrl, // Store signed URL in database
+                        'is_primary' => $isPrimary,
+                        'alt_text' => $product->name,
+                        'sort_order' => $existingImagesCount + $index,
+                    ]);
+                    
+                    if ($isPrimary) {
+                        // Unset other primary images
+                        $product->images()->where('id', '!=', $newImage->id)
+                            ->update(['is_primary' => false]);
+                        $primarySet = true;
+                    }
+                } catch (\Exception $e) {
+                    // Log error but continue with next image
+                    \Log::error('Error uploading image to Backblaze: ' . $e->getMessage());
+                    continue;
                 }
             }
         }
@@ -576,11 +689,36 @@ class ProductController extends Controller
         try {
             $product = Product::findOrFail($id);
             
-            // Xóa tất cả hình ảnh của sản phẩm
+            // Xóa tất cả hình ảnh của sản phẩm từ Backblaze
             foreach ($product->images as $image) {
-                $filePath = public_path($image->image_url);
-                if (file_exists($filePath)) {
-                    unlink($filePath);
+                try {
+                    // Use image_path if available, otherwise try to extract from image_url
+                    $path = $image->image_path;
+                    
+                    if (empty($path)) {
+                        // Fallback: try to extract path from URL
+                        $imageUrl = $image->image_url;
+                        if (strpos($imageUrl, 'http') === 0) {
+                            $parsedUrl = parse_url($imageUrl);
+                            $path = ltrim($parsedUrl['path'] ?? '', '/');
+                            
+                            // Remove bucket name from path if present
+                            $bucketName = env('AWS_BUCKET');
+                            if (strpos($path, $bucketName . '/') === 0) {
+                                $path = substr($path, strlen($bucketName) + 1);
+                            }
+                        } else {
+                            $path = $imageUrl;
+                        }
+                    }
+                    
+                    // Delete from Backblaze
+                    if (!empty($path)) {
+                        Storage::disk('backblaze')->delete($path);
+                    }
+                } catch (\Exception $e) {
+                    // Log error but continue deletion
+                    \Log::warning('Failed to delete image from Backblaze: ' . $e->getMessage());
                 }
                 $image->delete();
             }
@@ -600,6 +738,72 @@ class ProductController extends Controller
                 'success' => false,
                 'message' => 'Lỗi khi xóa sản phẩm: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Helper method to upload image to Backblaze B2
+     * 
+     * @param \Illuminate\Http\UploadedFile $image
+     * @param string $fileName
+     * @return string The path of the uploaded image (for private buckets, use signed URL when displaying)
+     * @throws \Exception
+     */
+    private function uploadToBackblaze($image, $fileName)
+    {
+        // Create S3 client for Backblaze B2
+        $s3Client = new S3Client([
+            'version' => 'latest',
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-005'),
+            'endpoint' => env('AWS_ENDPOINT', 'https://s3.us-east-005.backblazeb2.com'),
+            'use_path_style_endpoint' => true,
+            'credentials' => [
+                'key' => env('AWS_ACCESS_KEY_ID'),
+                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            ],
+        ]);
+        
+        $bucket = env('AWS_BUCKET', 'Glasses');
+        $fileContent = file_get_contents($image->getRealPath());
+        
+        // Upload without ACL (Backblaze B2 doesn't support ACL)
+        $result = $s3Client->putObject([
+            'Bucket' => $bucket,
+            'Key' => $fileName,
+            'Body' => $fileContent,
+            'ContentType' => $image->getMimeType(),
+            // Don't set ACL - Backblaze doesn't support it
+        ]);
+        
+        // Return path instead of URL - we'll generate signed URL when needed
+        return $fileName;
+    }
+
+    /**
+     * Get signed URL for private bucket image
+     * 
+     * @param string $path The path stored in database
+     * @param int $expirationMinutes Expiration time in minutes (default: 60 minutes, max: 10080 = 1 week)
+     * @return string Signed URL
+     */
+    private function getSignedUrl($path, $expirationMinutes = 60)
+    {
+        try {
+            // AWS S3 signed URLs have a maximum expiration of 1 week (10080 minutes)
+            $maxExpiration = 10080; // 1 week
+            $expirationMinutes = min($expirationMinutes, $maxExpiration);
+            
+            // Generate signed URL using Storage facade
+            return Storage::disk('backblaze')->temporaryUrl(
+                $path,
+                now()->addMinutes($expirationMinutes)
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to generate signed URL: ' . $e->getMessage());
+            // Fallback to regular URL if signed URL fails
+            $endpoint = env('AWS_ENDPOINT', 'https://s3.us-east-005.backblazeb2.com');
+            $bucket = env('AWS_BUCKET', 'Glasses');
+            return rtrim($endpoint, '/') . '/' . $bucket . '/' . $path;
         }
     }
 }

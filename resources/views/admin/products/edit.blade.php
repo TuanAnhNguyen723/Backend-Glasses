@@ -599,8 +599,12 @@
             
             galleryGrid.innerHTML = uploadedImages.map((img, index) => {
                 const isPrimary = index === primaryImageIndex;
-                // Handle both relative and absolute URLs
-                const imageUrl = img.url.startsWith('http') ? img.url : (img.url.startsWith('/') ? img.url : '/' + img.url);
+                // Handle http(s), absolute paths, and in-memory previews (data/blob)
+                const rawUrl = (img && typeof img.url === 'string') ? img.url : '';
+                const isDataOrBlob = rawUrl.startsWith('data:') || rawUrl.startsWith('blob:');
+                const imageUrl = isDataOrBlob
+                    ? rawUrl
+                    : (rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/') ? rawUrl : '/' + rawUrl));
                 return `
                     <div class="relative group aspect-square rounded-lg overflow-hidden border border-[#cfdbe7] dark:border-slate-700 shadow-sm">
                         <div class="w-full h-full bg-cover bg-center" style="background-image: url('${imageUrl}')"></div>

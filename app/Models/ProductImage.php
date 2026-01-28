@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductImage extends Model
 {
     protected $fillable = [
-        'product_id', 'image_url', 'alt_text', 'sort_order', 'is_primary'
+        'product_id', 'image_url', 'image_path', 'alt_text', 'sort_order', 'is_primary'
     ];
 
     protected $casts = [

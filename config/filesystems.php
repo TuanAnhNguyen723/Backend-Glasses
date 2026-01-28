@@ -60,6 +60,20 @@ return [
             'report' => false,
         ],
 
+        'backblaze' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-005'),
+            'bucket' => env('AWS_BUCKET', 'Glasses'),
+            'endpoint' => env('AWS_ENDPOINT', 'https://s3.us-east-005.backblazeb2.com'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
+            'options' => [
+                'ServerSideEncryption' => null,
+            ],
+            'throw' => false,
+        ],
+
     ],
 
     /*
