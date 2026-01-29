@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Brand;
 use App\Models\ProductColor;
+use App\Jobs\UploadProductImagesJob;
 use App\Models\ProductImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -243,88 +244,48 @@ class ProductController extends Controller
             if (is_array($decoded)) $imagesMeta = $decoded;
         }
 
-        // Handle image uploads
+        // Handle image uploads: lưu file tạm → tạo product_images (image_path null) → dispatch job → trả response ngay
         if ($request->hasFile('images')) {
-            $primarySet = false;
             $primaryIndex = (int)$request->input('primary_image_index', 0);
-            $uploadAttempts = 0;
-            $uploadFailures = [];
-            $imagesCountBefore = $product->images()->count();
+            $tempDir = 'temp-product-uploads/' . $product->id . '_' . time() . '_' . Str::random(6);
+            $now = now();
+            $rows = [];
 
             foreach ($request->file('images') as $index => $image) {
-                $uploadAttempts++;
-                try {
-                    $isPrimary = ($index == $primaryIndex) && !$primarySet;
-
-                    // Determine color for this image (optional but recommended)
-                    $meta = $imagesMeta[$index] ?? null;
-                    $hex = null;
-                    if (is_array($meta)) {
-                        $hex = $meta['color_hex'] ?? $meta['hex_code'] ?? $meta['color'] ?? null;
-                    }
-                    $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
-                    $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
-
-                    // Generate unique filename
-                    $originalName = $image->getClientOriginalName();
-                    $extension = $image->getClientOriginalExtension();
-                    $nameWithoutExtension = pathinfo($originalName, PATHINFO_FILENAME);
-                    $cleanName = Str::slug($nameWithoutExtension, '_');
-                    $uniqueName = $cleanName . '_' . $product->id . '_' . time() . '_' . $index . '.' . $extension;
-                    $fileName = 'products/' . $uniqueName;
-
-                    // Upload to Backblaze B2 (Storage disk) – trả về path
-                    $imagePath = $this->uploadToBackblaze($image, $fileName);
-
-                    // Signed URL cho hiển thị (nếu lỗi vẫn lưu path, URL để sau sinh lại)
-                    try {
-                        $signedUrl = $this->getSignedUrl($imagePath, 10080);
-                    } catch (\Throwable $e) {
-                        Log::warning('getSignedUrl failed, saving path only: ' . $e->getMessage());
-                        $signedUrl = '';
-                    }
-
-                    $product->images()->create([
-                        'image_path' => $imagePath,
-                        'image_url' => $signedUrl ?: $imagePath,
-                        'product_color_id' => $productColorId,
-                        'is_primary' => $isPrimary,
-                        'alt_text' => $product->name,
-                        'sort_order' => $index,
-                    ]);
-
-                    if ($isPrimary) {
-                        $primarySet = true;
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Error uploading image to Backblaze: ' . $e->getMessage());
-                    $uploadFailures[] = $e->getMessage();
-                    continue;
+                $meta = $imagesMeta[$index] ?? null;
+                $hex = null;
+                if (is_array($meta)) {
+                    $hex = $meta['color_hex'] ?? $meta['hex_code'] ?? $meta['color'] ?? null;
                 }
+                $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
+                $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
+
+                $ext = $image->getClientOriginalExtension() ?: 'jpg';
+                $tempPath = $tempDir . '/' . $index . '.' . $ext;
+                Storage::disk('local')->put($tempPath, file_get_contents($image->getRealPath()));
+
+                $rows[] = [
+                    'product_id' => $product->id,
+                    'image_path' => null,
+                    'image_url' => '',
+                    'product_color_id' => $productColorId,
+                    'is_primary' => $index === $primaryIndex,
+                    'alt_text' => $product->name,
+                    'sort_order' => $index,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
 
-            // Nếu có ảnh gửi lên nhưng không có ảnh nào lưu được → trả lỗi rõ
-            $imagesCountAfter = $product->images()->count();
-            if ($uploadAttempts > 0 && $imagesCountAfter === $imagesCountBefore) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Không thể tải ảnh lên Backblaze. Kiểm tra cấu hình .env: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, AWS_ENDPOINT.',
-                    'errors' => ['images' => [$uploadFailures[0] ?? 'Upload thất bại']],
-                ], 422);
-            }
-
-            // Ensure at least one primary image
-            if (!$primarySet) {
-                $firstImage = $product->images()->orderBy('sort_order')->first();
-                if ($firstImage instanceof \App\Models\ProductImage) {
-                    $firstImage->update(['is_primary' => true]);
-                }
+            if (!empty($rows)) {
+                ProductImage::insert($rows);
+                UploadProductImagesJob::dispatch($product->id, $tempDir);
             }
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Sản phẩm đã được tạo thành công',
+            'message' => 'Sản phẩm đã được tạo thành công. Ảnh đang được tải lên và sẽ hiển thị trong giây lát.',
             'product' => $product->load('category', 'images', 'colors'),
         ], 201);
     }
@@ -666,84 +627,56 @@ class ProductController extends Controller
             }
         }
 
-        // Handle new image uploads
+        // Handle new image uploads: lưu file tạm → tạo product_images (image_path null) → dispatch job → trả response ngay
         if ($request->hasFile('images')) {
-            // Build color map from current colors (after potential update below)
             $colorIdByHex = $product->colors()->pluck('id', 'hex_code')->mapWithKeys(function ($id, $hex) {
                 return [strtoupper($hex) => $id];
             })->toArray();
 
-            // Parse meta for new images (index aligned with $request->file('images'))
             $imagesMeta = [];
             if ($request->filled('images_meta')) {
                 $decoded = json_decode($request->input('images_meta'), true);
                 if (is_array($decoded)) $imagesMeta = $decoded;
             }
 
-            $primarySet = false;
             $primaryIndex = (int)$request->input('primary_image_index', 0);
             $existingImagesCount = $product->images()->count();
-            $uploadAttempts = 0;
-            $uploadFailures = [];
+            $tempDir = 'temp-product-uploads/' . $product->id . '_' . time() . '_' . Str::random(6);
+            $now = now();
+            $rows = [];
 
             foreach ($request->file('images') as $index => $image) {
-                $uploadAttempts++;
-                try {
-                    $isPrimary = ($index == $primaryIndex) && !$primarySet;
-
-                    $meta = $imagesMeta[$index] ?? null;
-                    $hex = null;
-                    if (is_array($meta)) {
-                        $hex = $meta['color_hex'] ?? $meta['hex_code'] ?? $meta['color'] ?? null;
-                    }
-                    $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
-                    $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
-
-                    // Generate unique filename
-                    $originalName = $image->getClientOriginalName();
-                    $extension = $image->getClientOriginalExtension();
-                    $nameWithoutExtension = pathinfo($originalName, PATHINFO_FILENAME);
-                    $cleanName = Str::slug($nameWithoutExtension, '_');
-                    $uniqueName = $cleanName . '_' . $product->id . '_' . time() . '_' . ($existingImagesCount + $index) . '.' . $extension;
-                    $fileName = 'products/' . $uniqueName;
-
-                    // Upload to Backblaze B2 (Storage disk)
-                    $imagePath = $this->uploadToBackblaze($image, $fileName);
-
-                    try {
-                        $signedUrl = $this->getSignedUrl($imagePath, 10080);
-                    } catch (\Throwable $e) {
-                        Log::warning('getSignedUrl failed, saving path only: ' . $e->getMessage());
-                        $signedUrl = '';
-                    }
-
-                    $newImage = $product->images()->create([
-                        'image_path' => $imagePath,
-                        'image_url' => $signedUrl ?: $imagePath,
-                        'product_color_id' => $productColorId,
-                        'is_primary' => $isPrimary,
-                        'alt_text' => $product->name,
-                        'sort_order' => $existingImagesCount + $index,
-                    ]);
-
-                    if ($isPrimary) {
-                        $product->images()->where('id', '!=', $newImage->id)
-                            ->update(['is_primary' => false]);
-                        $primarySet = true;
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Error uploading image to Backblaze: ' . $e->getMessage());
-                    $uploadFailures[] = $e->getMessage();
-                    continue;
+                $meta = $imagesMeta[$index] ?? null;
+                $hex = null;
+                if (is_array($meta)) {
+                    $hex = $meta['color_hex'] ?? $meta['hex_code'] ?? $meta['color'] ?? null;
                 }
+                $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
+                $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
+
+                $ext = $image->getClientOriginalExtension() ?: 'jpg';
+                $tempPath = $tempDir . '/' . $index . '.' . $ext;
+                Storage::disk('local')->put($tempPath, file_get_contents($image->getRealPath()));
+
+                $rows[] = [
+                    'product_id' => $product->id,
+                    'image_path' => null,
+                    'image_url' => '',
+                    'product_color_id' => $productColorId,
+                    'is_primary' => false,
+                    'alt_text' => $product->name,
+                    'sort_order' => $existingImagesCount + $index,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
 
-            if ($uploadAttempts > 0 && count($uploadFailures) === $uploadAttempts) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Không thể tải ảnh lên Backblaze. Kiểm tra .env: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, AWS_ENDPOINT.',
-                    'errors' => ['images' => [$uploadFailures[0] ?? 'Upload thất bại']],
-                ], 422);
+            if (!empty($rows)) {
+                ProductImage::insert($rows);
+                $product->images()->update(['is_primary' => false]);
+                $sortOrderPrimary = $existingImagesCount + min($primaryIndex, count($rows) - 1);
+                ProductImage::where('product_id', $product->id)->where('sort_order', $sortOrderPrimary)->update(['is_primary' => true]);
+                UploadProductImagesJob::dispatch($product->id, $tempDir);
             }
         }
 
@@ -783,7 +716,7 @@ class ProductController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Sản phẩm đã được cập nhật thành công',
+            'message' => 'Sản phẩm đã được cập nhật thành công. Ảnh mới đang được tải lên và sẽ hiển thị trong giây lát.',
             'product' => $product->load('category', 'images', 'colors'),
         ], 200);
     }
