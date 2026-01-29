@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('product_images', function (Blueprint $table) {
-            $table->string('image_path')->nullable()->after('image_url');
-        });
+        if (!Schema::hasTable('product_images')) {
+            return;
+        }
+
+        if (!Schema::hasColumn('product_images', 'image_path')) {
+            Schema::table('product_images', function (Blueprint $table) {
+                $table->string('image_path')->nullable()->after('image_url');
+            });
+        }
     }
 
     /**
@@ -21,6 +27,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('product_images') || !Schema::hasColumn('product_images', 'image_path')) {
+            return;
+        }
+
         Schema::table('product_images', function (Blueprint $table) {
             $table->dropColumn('image_path');
         });

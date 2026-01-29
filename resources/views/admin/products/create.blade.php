@@ -504,14 +504,13 @@
             formData.append('badge', document.getElementById('product-badge').value);
             formData.append('description', document.getElementById('product-description').value);
             formData.append('is_active', document.getElementById('product-status').value);
-            formData.append('frame_colors', document.getElementById('selected-colors').value || JSON.stringify(selectedColors));
-            
-            // Add images
+
+            // Add images (phải append file trước, không gửi frame_colors/selected-colors cũ đã xóa)
             formData.append('primary_image_index', primaryImageIndex);
             uploadedImages.forEach((img, index) => {
                 formData.append(`images[${index}]`, img.file);
             });
-            // Derive frame colors from per-image colors
+            // Frame colors = danh sách màu unique từ từng ảnh
             const uniqueColors = Array.from(new Set(uploadedImages.map(i => (i.color_hex || '').trim()).filter(Boolean)));
             formData.append('frame_colors', JSON.stringify(uniqueColors));
             // Send image -> color mapping (index aligned with images[])

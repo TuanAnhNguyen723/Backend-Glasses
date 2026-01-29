@@ -85,10 +85,13 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($users as $user) {
-            User::create($user);
+            User::updateOrCreate(
+                ['email' => $user['email']],
+                $user
+            );
         }
 
-        $this->command->info('Created ' . count($users) . ' users.');
+        $this->command->info('Seeded ' . count($users) . ' users.');
         $this->command->info('Default password for all users: password123');
     }
 }

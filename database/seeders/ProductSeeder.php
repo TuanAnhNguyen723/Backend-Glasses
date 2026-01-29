@@ -199,7 +199,15 @@ class ProductSeeder extends Seeder
         ];
 
         foreach ($products as $productData) {
-            $product = Product::create($productData);
+            $product = Product::firstOrCreate(
+                ['sku' => $productData['sku']],
+                $productData
+            );
+
+            // Chỉ tạo images/colors/lens khi sản phẩm mới (tránh trùng khi chạy seed nhiều lần)
+            if (!$product->wasRecentlyCreated) {
+                continue;
+            }
 
             // Tạo Product Images
             $images = [
@@ -300,6 +308,6 @@ class ProductSeeder extends Seeder
             }
         }
 
-        $this->command->info('Created ' . count($products) . ' products with images, colors, and lens options.');
+        $this->command->info('Seeded ' . count($products) . ' products (images, colors, lens options chỉ tạo khi sản phẩm mới).');
     }
 }

@@ -8,9 +8,9 @@ use App\Models\Category;
 use App\Models\Brand;
 use App\Models\ProductColor;
 use App\Models\ProductImage;
-use Aws\S3\S3Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -42,7 +42,7 @@ class ProductController extends Controller
                     );
                 } catch (\Exception $e) {
                     // If signed URL generation fails, keep the existing URL or try to generate from image_url
-                    \Log::warning('Failed to generate signed URL for image: ' . $e->getMessage());
+                    Log::warning('Failed to generate signed URL for image: ' . $e->getMessage());
                     // If image_url exists but is expired, try to extract path and regenerate
                     if ($image->image_url && strpos($image->image_url, 'http') === 0) {
                         // Keep existing URL as fallback
@@ -247,8 +247,12 @@ class ProductController extends Controller
         if ($request->hasFile('images')) {
             $primarySet = false;
             $primaryIndex = (int)$request->input('primary_image_index', 0);
-            
+            $uploadAttempts = 0;
+            $uploadFailures = [];
+            $imagesCountBefore = $product->images()->count();
+
             foreach ($request->file('images') as $index => $image) {
+                $uploadAttempts++;
                 try {
                     $isPrimary = ($index == $primaryIndex) && !$primarySet;
 
@@ -260,7 +264,7 @@ class ProductController extends Controller
                     }
                     $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
                     $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
-                    
+
                     // Generate unique filename
                     $originalName = $image->getClientOriginalName();
                     $extension = $image->getClientOriginalExtension();
@@ -268,33 +272,47 @@ class ProductController extends Controller
                     $cleanName = Str::slug($nameWithoutExtension, '_');
                     $uniqueName = $cleanName . '_' . $product->id . '_' . time() . '_' . $index . '.' . $extension;
                     $fileName = 'products/' . $uniqueName;
-                    
-                    // Upload to Backblaze B2 using helper method
-                    // Returns path, not URL (for private buckets)
+
+                    // Upload to Backblaze B2 (Storage disk) – trả về path
                     $imagePath = $this->uploadToBackblaze($image, $fileName);
-                    
-                    // Generate signed URL (valid for 1 week - max allowed by AWS S3) for display
-                    $signedUrl = $this->getSignedUrl($imagePath, 10080); // 1 week = 10080 minutes
-                    
+
+                    // Signed URL cho hiển thị (nếu lỗi vẫn lưu path, URL để sau sinh lại)
+                    try {
+                        $signedUrl = $this->getSignedUrl($imagePath, 10080);
+                    } catch (\Throwable $e) {
+                        Log::warning('getSignedUrl failed, saving path only: ' . $e->getMessage());
+                        $signedUrl = '';
+                    }
+
                     $product->images()->create([
-                        'image_path' => $imagePath, // Store path in database
-                        'image_url' => $signedUrl, // Store signed URL for display
+                        'image_path' => $imagePath,
+                        'image_url' => $signedUrl ?: $imagePath,
                         'product_color_id' => $productColorId,
                         'is_primary' => $isPrimary,
                         'alt_text' => $product->name,
                         'sort_order' => $index,
                     ]);
-                    
+
                     if ($isPrimary) {
                         $primarySet = true;
                     }
                 } catch (\Exception $e) {
-                    // Log error but continue with next image
-                    \Log::error('Error uploading image to Backblaze: ' . $e->getMessage());
+                    Log::error('Error uploading image to Backblaze: ' . $e->getMessage());
+                    $uploadFailures[] = $e->getMessage();
                     continue;
                 }
             }
-            
+
+            // Nếu có ảnh gửi lên nhưng không có ảnh nào lưu được → trả lỗi rõ
+            $imagesCountAfter = $product->images()->count();
+            if ($uploadAttempts > 0 && $imagesCountAfter === $imagesCountBefore) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể tải ảnh lên Backblaze. Kiểm tra cấu hình .env: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, AWS_ENDPOINT.',
+                    'errors' => ['images' => [$uploadFailures[0] ?? 'Upload thất bại']],
+                ], 422);
+            }
+
             // Ensure at least one primary image
             if (!$primarySet) {
                 $firstImage = $product->images()->orderBy('sort_order')->first();
@@ -610,7 +628,7 @@ class ProductController extends Controller
                             }
                         } catch (\Exception $e) {
                             // Log error but continue deletion
-                            \Log::warning('Failed to delete image from Backblaze: ' . $e->getMessage());
+                            Log::warning('Failed to delete image from Backblaze: ' . $e->getMessage());
                         }
                         $image->delete();
                     }
@@ -665,8 +683,11 @@ class ProductController extends Controller
             $primarySet = false;
             $primaryIndex = (int)$request->input('primary_image_index', 0);
             $existingImagesCount = $product->images()->count();
-            
+            $uploadAttempts = 0;
+            $uploadFailures = [];
+
             foreach ($request->file('images') as $index => $image) {
+                $uploadAttempts++;
                 try {
                     $isPrimary = ($index == $primaryIndex) && !$primarySet;
 
@@ -677,7 +698,7 @@ class ProductController extends Controller
                     }
                     $hex = is_string($hex) ? strtoupper(trim($hex)) : null;
                     $productColorId = $hex && isset($colorIdByHex[$hex]) ? $colorIdByHex[$hex] : null;
-                    
+
                     // Generate unique filename
                     $originalName = $image->getClientOriginalName();
                     $extension = $image->getClientOriginalExtension();
@@ -685,34 +706,44 @@ class ProductController extends Controller
                     $cleanName = Str::slug($nameWithoutExtension, '_');
                     $uniqueName = $cleanName . '_' . $product->id . '_' . time() . '_' . ($existingImagesCount + $index) . '.' . $extension;
                     $fileName = 'products/' . $uniqueName;
-                    
-                    // Upload to Backblaze B2 using helper method
-                    // Returns path, not URL (for private buckets)
+
+                    // Upload to Backblaze B2 (Storage disk)
                     $imagePath = $this->uploadToBackblaze($image, $fileName);
-                    
-                    // Generate signed URL (valid for 1 week - max allowed by AWS S3)
-                    $signedUrl = $this->getSignedUrl($imagePath, 10080); // 1 week = 10080 minutes
-                    
+
+                    try {
+                        $signedUrl = $this->getSignedUrl($imagePath, 10080);
+                    } catch (\Throwable $e) {
+                        Log::warning('getSignedUrl failed, saving path only: ' . $e->getMessage());
+                        $signedUrl = '';
+                    }
+
                     $newImage = $product->images()->create([
                         'image_path' => $imagePath,
-                        'image_url' => $signedUrl, // Store signed URL in database
+                        'image_url' => $signedUrl ?: $imagePath,
                         'product_color_id' => $productColorId,
                         'is_primary' => $isPrimary,
                         'alt_text' => $product->name,
                         'sort_order' => $existingImagesCount + $index,
                     ]);
-                    
+
                     if ($isPrimary) {
-                        // Unset other primary images
                         $product->images()->where('id', '!=', $newImage->id)
                             ->update(['is_primary' => false]);
                         $primarySet = true;
                     }
                 } catch (\Exception $e) {
-                    // Log error but continue with next image
-                    \Log::error('Error uploading image to Backblaze: ' . $e->getMessage());
+                    Log::error('Error uploading image to Backblaze: ' . $e->getMessage());
+                    $uploadFailures[] = $e->getMessage();
                     continue;
                 }
+            }
+
+            if ($uploadAttempts > 0 && count($uploadFailures) === $uploadAttempts) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể tải ảnh lên Backblaze. Kiểm tra .env: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, AWS_ENDPOINT.',
+                    'errors' => ['images' => [$uploadFailures[0] ?? 'Upload thất bại']],
+                ], 422);
             }
         }
 
@@ -791,7 +822,7 @@ class ProductController extends Controller
                     }
                 } catch (\Exception $e) {
                     // Log error but continue deletion
-                    \Log::warning('Failed to delete image from Backblaze: ' . $e->getMessage());
+                    Log::warning('Failed to delete image from Backblaze: ' . $e->getMessage());
                 }
                 $image->delete();
             }
@@ -815,8 +846,8 @@ class ProductController extends Controller
     }
 
     /**
-     * Helper method to upload image to Backblaze B2
-     * 
+     * Helper method to upload image to Backblaze B2 (dùng Laravel Storage disk để đồng bộ config với temporaryUrl).
+     *
      * @param \Illuminate\Http\UploadedFile $image
      * @param string $fileName
      * @return string The path of the uploaded image (for private buckets, use signed URL when displaying)
@@ -824,31 +855,13 @@ class ProductController extends Controller
      */
     private function uploadToBackblaze($image, $fileName)
     {
-        // Create S3 client for Backblaze B2
-        $s3Client = new S3Client([
-            'version' => 'latest',
-            'region' => env('AWS_DEFAULT_REGION', 'us-east-005'),
-            'endpoint' => env('AWS_ENDPOINT', 'https://s3.us-east-005.backblazeb2.com'),
-            'use_path_style_endpoint' => true,
-            'credentials' => [
-                'key' => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            ],
-        ]);
-        
-        $bucket = env('AWS_BUCKET', 'Glasses');
-        $fileContent = file_get_contents($image->getRealPath());
-        
-        // Upload without ACL (Backblaze B2 doesn't support ACL)
-        $result = $s3Client->putObject([
-            'Bucket' => $bucket,
-            'Key' => $fileName,
-            'Body' => $fileContent,
-            'ContentType' => $image->getMimeType(),
-            // Don't set ACL - Backblaze doesn't support it
-        ]);
-        
-        // Return path instead of URL - we'll generate signed URL when needed
+        $contents = file_get_contents($image->getRealPath());
+        $stored = Storage::disk('backblaze')->put($fileName, $contents);
+
+        if ($stored === false) {
+            throw new \RuntimeException('Storage::put returned false for path: ' . $fileName);
+        }
+
         return $fileName;
     }
 
@@ -872,7 +885,7 @@ class ProductController extends Controller
                 now()->addMinutes($expirationMinutes)
             );
         } catch (\Exception $e) {
-            \Log::error('Failed to generate signed URL: ' . $e->getMessage());
+            Log::error('Failed to generate signed URL: ' . $e->getMessage());
             // Fallback to regular URL if signed URL fails
             $endpoint = env('AWS_ENDPOINT', 'https://s3.us-east-005.backblazeb2.com');
             $bucket = env('AWS_BUCKET', 'Glasses');
