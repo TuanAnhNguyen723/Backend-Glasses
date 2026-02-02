@@ -348,15 +348,14 @@ class ProductController extends Controller
         $products = $query->paginate($perPage);
 
         $products->getCollection()->transform(function($product) {
-            $primaryImage = $product->images->where('is_primary', true)->first() 
+            $primaryImage = $product->images->where('is_primary', true)->first()
                 ?? $product->images->first();
-            
-            // Generate signed URL from path if available
+
             $imageUrl = 'https://via.placeholder.com/100';
+            $imagePending = false;
             if ($primaryImage) {
                 if ($primaryImage->image_path) {
                     try {
-                        // Use Storage facade to generate signed URL
                         $imageUrl = Storage::disk('backblaze')->temporaryUrl(
                             $primaryImage->image_path,
                             now()->addHour()
@@ -365,10 +364,11 @@ class ProductController extends Controller
                         $imageUrl = $primaryImage->image_url ?? $imageUrl;
                     }
                 } else {
-                    $imageUrl = $primaryImage->image_url ?? $imageUrl;
+                    $imageUrl = $primaryImage->image_url ?: $imageUrl;
+                    $imagePending = true; // Ảnh đang upload qua queue
                 }
             }
-            
+
             // Tính % tồn kho
             $stockPercentage = $product->low_stock_threshold > 0 
                 ? min(100, ($product->stock_quantity / ($product->low_stock_threshold * 10)) * 100)
@@ -390,6 +390,7 @@ class ProductController extends Controller
                 'name' => $product->name,
                 'sku' => $product->sku,
                 'image_url' => $imageUrl,
+                'image_pending' => $imagePending,
                 'category' => $product->category ? $product->category->name : 'Chưa phân loại',
                 'brand' => $product->brand ? $product->brand->name : null,
                 'frame_shape' => $product->frame_shape,

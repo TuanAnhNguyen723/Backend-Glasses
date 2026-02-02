@@ -542,7 +542,7 @@
                 if (response.ok && data.success) {
                     notificationManager.success('Sản phẩm đã được tạo thành công!', 'Thành công');
                     setTimeout(() => {
-                        window.location.href = '{{ route("admin.products") }}';
+                        window.location.href = '{{ route("admin.products") }}?pending_images=1';
                     }, 1500);
                 } else {
                     // Handle validation errors

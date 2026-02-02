@@ -278,11 +278,14 @@
                     ? '<span class="text-xs font-bold text-red-500">Hết hàng</span>'
                     : `<span class="text-xs font-bold">${formatNumber(product.stock_quantity)} còn lại</span>`;
 
+                const imagePending = product.image_pending === true;
                 return `
                     <tr class="hover:bg-[#f6f7f8] dark:hover:bg-slate-800/30 transition-colors group">
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-4">
-                                <div class="size-12 rounded-lg bg-cover bg-center border border-[#cfdbe7] dark:border-slate-700 shadow-sm ${product.stock_quantity === 0 ? 'grayscale opacity-60' : ''}" style="background-image: url('${product.image_url}')"></div>
+                                <div class="size-12 rounded-lg bg-cover bg-center border border-[#cfdbe7] dark:border-slate-700 shadow-sm relative ${product.stock_quantity === 0 ? 'grayscale opacity-60' : ''}" style="background-image: url('${product.image_url}')">
+                                    ${imagePending ? '<div class="absolute inset-0 flex items-center justify-center rounded-lg bg-[#0d141b]/60"><span class="material-symbols-outlined animate-spin text-white text-lg">progress_activity</span></div>' : ''}
+                                </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm font-bold text-[#0d141b] dark:text-white group-hover:text-primary transition-colors">${product.name}</span>
                                     <span class="text-xs text-[#4c739a] font-medium">SKU: ${product.sku}</span>
@@ -533,10 +536,24 @@
             }, 500);
         });
 
+        // Refetch list khi vừa từ create/update về (ảnh đang upload queue → cần đợi job xong)
+        function scheduleRefetchIfPendingImages() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('pending_images') !== '1') return;
+            // Xóa param khỏi URL
+            params.delete('pending_images');
+            const newUrl = params.toString() ? (window.location.pathname + '?' + params) : window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+            // Refetch sau 2s và 5s để cập nhật ảnh khi job upload xong
+            setTimeout(() => loadProducts(currentPage), 2000);
+            setTimeout(() => loadProducts(currentPage), 5000);
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             loadProducts(1);
             loadStats();
+            scheduleRefetchIfPendingImages();
             loadFilters().then(() => {
                 // Setup dropdown toggles
                 document.getElementById('category-filter-btn').addEventListener('click', (e) => {
