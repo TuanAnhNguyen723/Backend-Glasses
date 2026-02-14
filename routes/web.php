@@ -34,4 +34,9 @@ Route::prefix('admin')->group(function () {
     Route::put('/api/brands/{id}', [\App\Http\Controllers\Admin\BrandController::class, 'update'])->name('admin.api.brands.update');
     Route::post('/api/brands/{id}/toggle-status', [\App\Http\Controllers\Admin\BrandController::class, 'toggleStatus'])->name('admin.api.brands.toggle-status');
     Route::delete('/api/brands/{id}', [\App\Http\Controllers\Admin\BrandController::class, 'destroy'])->name('admin.api.brands.destroy');
+
+    // Order Management Routes
+    Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('admin.orders');
+    Route::get('/orders/{id}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('admin.orders.show');
+    Route::get('/api/orders', [\App\Http\Controllers\Admin\OrderController::class, 'getOrders'])->name('admin.api.orders');
 });

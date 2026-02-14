@@ -14,7 +14,8 @@ class Order extends Model
         'shipping_name', 'shipping_phone', 'shipping_email',
         'shipping_address', 'shipping_city', 'shipping_postal_code',
         'shipping_country', 'tracking_number', 'estimated_delivery_date',
-        'delivered_at', 'notes'
+        'delivered_at', 'notes',
+        'payment_status', 'payment_method', 'payment_reference', 'paid_at',
     ];
 
     protected $casts = [
@@ -25,6 +26,7 @@ class Order extends Model
         'total_amount' => 'decimal:2',
         'estimated_delivery_date' => 'date',
         'delivered_at' => 'datetime',
+        'paid_at' => 'datetime',
     ];
 
     // Relationships

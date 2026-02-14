@@ -26,9 +26,14 @@ Route::prefix('v1')->group(function () {
     
     // Reviews
     Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
+
+    // Guest: tạo đơn không cần đăng nhập
+    Route::post('/orders', [OrderController::class, 'store']);
+    // Guest: ghi nhận thanh toán sau redirect Momo/VNPay (xác thực bằng order_number + shipping_email)
+    Route::post('/orders/confirm-payment-guest', [OrderController::class, 'recordPaymentGuest']);
 });
 
-// Protected routes
+// Protected routes (cần đăng nhập)
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -46,10 +51,10 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::delete('/cart/{id}', [CartController::class, 'destroy']);
     Route::delete('/cart', [CartController::class, 'clear']);
     
-    // Orders
+    // Orders (đã đăng nhập)
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
-    Route::post('/orders', [OrderController::class, 'store']);
+    Route::post('/orders/{id}/payment', [OrderController::class, 'recordPayment']);
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
     Route::get('/orders/{id}/track', [OrderController::class, 'track']);
     
