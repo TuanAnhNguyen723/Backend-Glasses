@@ -9,10 +9,20 @@ class OrderResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $customer = null;
+        if ($this->relationLoaded('user') && $this->user) {
+            $customer = [
+                'id' => $this->user->id,
+                'name' => $this->user->name,
+                'email' => $this->user->email,
+            ];
+        }
+
         return [
             'id' => $this->id,
             'order_number' => $this->order_number,
             'status' => $this->status,
+            'customer' => $customer,
             'subtotal' => (float) $this->subtotal,
             'tax_amount' => (float) $this->tax_amount,
             'shipping_amount' => (float) $this->shipping_amount,

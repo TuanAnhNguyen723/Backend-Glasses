@@ -8,6 +8,46 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Order extends Model
 {
+    /** Trạng thái đơn hàng (khớp với % hiển thị ở frontend profileService). */
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_CONFIRMED = 'confirmed';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_SHIPPED = 'shipped';
+    public const STATUS_DELIVERED = 'delivered';
+    public const STATUS_CANCELLED = 'cancelled';
+
+    /** Danh sách trạng thái hợp lệ (để validate + dropdown). */
+    public static function validStatuses(): array
+    {
+        return [
+            self::STATUS_PENDING,
+            self::STATUS_COMPLETED,
+            self::STATUS_CONFIRMED,
+            self::STATUS_PROCESSING,
+            self::STATUS_SHIPPED,
+            self::STATUS_DELIVERED,
+            self::STATUS_CANCELLED,
+        ];
+    }
+
+    /**
+     * Options cho dropdown đổi trạng thái (value, label, percent cho progress).
+     * Frontend dùng % theo bảng ánh xạ: pending 0%, completed/confirmed 25%, processing 50%, shipped 85%, delivered 100%, cancelled 0%.
+     */
+    public static function statusOptions(): array
+    {
+        return [
+            ['value' => self::STATUS_PENDING,     'label' => 'Chờ xử lý',       'percent' => 0],
+            ['value' => self::STATUS_COMPLETED,   'label' => 'Đã đặt/Thanh toán xong', 'percent' => 25],
+            ['value' => self::STATUS_CONFIRMED,   'label' => 'Đã xác nhận',      'percent' => 25],
+            ['value' => self::STATUS_PROCESSING,  'label' => 'Đang xử lý/Đóng gói', 'percent' => 50],
+            ['value' => self::STATUS_SHIPPED,     'label' => 'Đang giao hàng',   'percent' => 85],
+            ['value' => self::STATUS_DELIVERED,   'label' => 'Đã giao',          'percent' => 100],
+            ['value' => self::STATUS_CANCELLED,   'label' => 'Đã hủy',          'percent' => 0],
+        ];
+    }
+
     protected $fillable = [
         'order_number', 'user_id', 'status', 'subtotal', 'tax_amount',
         'shipping_amount', 'discount_amount', 'total_amount', 'promo_code',

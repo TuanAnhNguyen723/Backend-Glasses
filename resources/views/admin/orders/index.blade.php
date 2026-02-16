@@ -60,6 +60,7 @@
                     <tr class="bg-background-light/50 dark:bg-slate-800/50 border-b border-[#e7edf3] dark:border-slate-800">
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Mã đơn</th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Khách hàng</th>
+                        <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Tài khoản</th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Sản phẩm</th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Trạng thái</th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Thanh toán</th>
@@ -69,7 +70,7 @@
                 </thead>
                 <tbody id="orders-tbody" class="divide-y divide-[#e7edf3] dark:divide-slate-800">
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-[#4c739a] dark:text-slate-400">Đang tải dữ liệu...</td>
+                        <td colspan="8" class="px-6 py-12 text-center text-[#4c739a] dark:text-slate-400">Đang tải dữ liệu...</td>
                     </tr>
                 </tbody>
             </table>
@@ -118,22 +119,31 @@
                     .then(function(res) { return res.json(); })
                     .then(function(result) {
                         const data = result.data || [];
+                        const statusOptions = result.status_options || [];
                         const total = result.total || 0;
                         const from = result.from || 0;
                         const to = result.to || 0;
                         const lastPage = result.last_page || 1;
                         const current = result.current_page || 1;
+                        const updateStatusUrl = '{{ url("admin/api/orders") }}';
 
                         if (data.length === 0) {
-                            ordersTbody.innerHTML = '<tr><td colspan="7" class="px-6 py-12 text-center text-[#4c739a] dark:text-slate-400">Không có đơn hàng nào</td></tr>';
+                            ordersTbody.innerHTML = '<tr><td colspan="8" class="px-6 py-12 text-center text-[#4c739a] dark:text-slate-400">Không có đơn hàng nào</td></tr>';
                         } else {
                             ordersTbody.innerHTML = data.map(function(order) {
                                 const productImageStyle = order.product_image_url
                                     ? 'background-image: url(\'' + escapeHtml(order.product_image_url) + '\')'
                                     : 'background-color: #e7edf3';
                                 var detailUrl = '{{ route("admin.orders") }}/' + order.id;
+                                var accountBadge = order.customer_id
+                                    ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Có tài khoản</span>'
+                                    : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">Khách</span>';
+                                var selectOptions = statusOptions.map(function(opt) {
+                                    var sel = opt.value === order.status ? ' selected' : '';
+                                    return '<option value="' + escapeHtml(opt.value) + '"' + sel + '>' + escapeHtml(opt.label) + '</option>';
+                                }).join('');
                                 return (
-                                    '<tr class="hover:bg-background-light/30 dark:hover:bg-slate-800/30 transition-colors">' +
+                                    '<tr class="hover:bg-background-light/30 dark:hover:bg-slate-800/30 transition-colors" data-order-id="' + order.id + '">' +
                                     '<td class="px-6 py-4">' +
                                     '<a class="text-primary font-bold hover:underline" href="' + detailUrl + '">#' + escapeHtml(order.order_number) + '</a>' +
                                     '</td>' +
@@ -141,6 +151,7 @@
                                     '<p class="font-medium text-[#0d141b] dark:text-white">' + escapeHtml(order.customer_name) + '</p>' +
                                     '<p class="text-xs text-[#4c739a]">' + escapeHtml(order.customer_email) + '</p>' +
                                     '</td>' +
+                                    '<td class="px-6 py-4">' + accountBadge + '</td>' +
                                     '<td class="px-6 py-4">' +
                                     '<div class="flex items-center gap-3">' +
                                     '<div class="size-10 rounded-lg bg-center bg-no-repeat bg-cover border border-[#e7edf3] dark:border-slate-800" style="' + productImageStyle + '" aria-hidden="true"></div>' +
@@ -148,7 +159,7 @@
                                     '</div>' +
                                     '</td>' +
                                     '<td class="px-6 py-4">' +
-                                    '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ' + escapeHtml(order.status_class) + '">' + escapeHtml(order.status_display) + '</span>' +
+                                    '<select class="order-status-select w-full max-w-[180px] px-3 py-1.5 text-sm rounded-lg border border-[#e7edf3] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent" data-order-id="' + order.id + '" data-previous-status="' + escapeHtml(order.status) + '">' + selectOptions + '</select>' +
                                     '</td>' +
                                     '<td class="px-6 py-4">' +
                                     '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ' + escapeHtml(order.payment_class) + '">' + escapeHtml(order.payment_display) + '</span>' +
@@ -158,6 +169,45 @@
                                     '</tr>'
                                 );
                             }).join('');
+
+                            ordersTbody.querySelectorAll('.order-status-select').forEach(function(select) {
+                                select.addEventListener('change', function() {
+                                    var orderId = this.getAttribute('data-order-id');
+                                    var newStatus = this.value;
+                                    var previousStatus = this.getAttribute('data-previous-status');
+                                    this.disabled = true;
+                                    fetch(updateStatusUrl + '/' + orderId + '/status', {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                        },
+                                        body: JSON.stringify({ status: newStatus })
+                                    })
+                                        .then(function(r) { return r.json(); })
+                                        .then(function(res) {
+                                            this.setAttribute('data-previous-status', newStatus);
+                                            if (typeof notificationManager !== 'undefined') {
+                                                notificationManager.success('Đã cập nhật trạng thái đơn.', 'Thành công');
+                                            } else {
+                                                alert('Đã cập nhật trạng thái đơn.');
+                                            }
+                                        }.bind(this))
+                                        .catch(function() {
+                                            this.value = previousStatus;
+                                            if (typeof notificationManager !== 'undefined') {
+                                                notificationManager.error('Không thể cập nhật trạng thái.', 'Lỗi');
+                                            } else {
+                                                alert('Không thể cập nhật trạng thái.');
+                                            }
+                                        })
+                                        .finally(function() {
+                                            this.disabled = false;
+                                        }.bind(this));
+                                });
+                            });
                         }
 
                         paginationInfo.textContent = 'Hiển thị ' + (total ? (from + ' đến ' + to) : '0') + ' trong ' + total + ' đơn hàng';
@@ -166,7 +216,7 @@
                     })
                     .catch(function(err) {
                         console.error(err);
-                        ordersTbody.innerHTML = '<tr><td colspan="7" class="px-6 py-12 text-center text-red-500">Lỗi khi tải dữ liệu</td></tr>';
+                        ordersTbody.innerHTML = '<tr><td colspan="8" class="px-6 py-12 text-center text-red-500">Lỗi khi tải dữ liệu</td></tr>';
                     });
             }
 

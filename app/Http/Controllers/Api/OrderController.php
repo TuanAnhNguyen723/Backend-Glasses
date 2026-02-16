@@ -26,7 +26,7 @@ class OrderController extends Controller
         $perPage = max(1, min(50, (int) $request->get('per_page', 15)));
         $orders = Order::query()
             ->where('user_id', $request->user()->id)
-            ->with('items')
+            ->with(['items', 'user'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
 
@@ -48,7 +48,7 @@ class OrderController extends Controller
     {
         $order = Order::query()
             ->where('user_id', $request->user()->id)
-            ->with(['items', 'statusHistory'])
+            ->with(['items', 'statusHistory', 'user'])
             ->findOrFail($id);
 
         return response()->json(['data' => new OrderResource($order)]);
@@ -81,9 +81,14 @@ class OrderController extends Controller
             'items.*.quantity' => 'required_with:items|integer|min:1|max:99',
             'items.*.product_color_id' => 'nullable|exists:product_colors,id',
             'items.*.lens_option_id' => 'nullable|exists:lens_options,id',
+            'user_id' => 'nullable|integer|exists:users,id',
         ]);
 
-        $userId = auth()->id(); // null nếu guest
+        // Có Bearer token → dùng user đăng nhập; không thì dùng user_id trong body (nếu có); còn lại guest.
+        $userId = auth()->id();
+        if ($userId === null && $request->has('user_id')) {
+            $userId = (int) $request->input('user_id');
+        }
 
         if (! empty($validated['cart_item_ids'])) {
             if (! $userId) {
@@ -264,7 +269,7 @@ class OrderController extends Controller
     {
         $order = Order::query()
             ->where('user_id', $request->user()->id)
-            ->with(['items', 'statusHistory'])
+            ->with(['items', 'statusHistory', 'user'])
             ->findOrFail($id);
 
         return response()->json([

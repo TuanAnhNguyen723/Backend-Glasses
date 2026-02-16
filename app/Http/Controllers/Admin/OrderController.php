@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -77,6 +78,7 @@ class OrderController extends Controller
             return [
                 'id' => $order->id,
                 'order_number' => $order->order_number,
+                'customer_id' => $order->user_id,
                 'customer_name' => $customerName,
                 'customer_email' => $customerEmail,
                 'product_name' => $productName,
@@ -94,6 +96,7 @@ class OrderController extends Controller
 
         return response()->json([
             'data' => $data,
+            'status_options' => Order::statusOptions(),
             'current_page' => $orders->currentPage(),
             'last_page' => $orders->lastPage(),
             'per_page' => $orders->perPage(),
@@ -103,15 +106,65 @@ class OrderController extends Controller
         ]);
     }
 
+    /**
+     * API danh sách trạng thái đơn (cho dropdown đổi trạng thái).
+     */
+    public function getStatusOptions(Request $request): JsonResponse
+    {
+        return response()->json(['data' => Order::statusOptions()]);
+    }
+
+    /**
+     * Cập nhật trạng thái đơn (dropdown). Khi chuyển sang delivered thì ghi delivered_at.
+     */
+    public function updateStatus(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'status' => 'required|string|in:' . implode(',', Order::validStatuses()),
+        ]);
+
+        $order = Order::findOrFail($id);
+        $oldStatus = $order->status;
+        $newStatus = $request->input('status');
+
+        $order->status = $newStatus;
+        if ($newStatus === Order::STATUS_DELIVERED && ! $order->delivered_at) {
+            $order->delivered_at = now();
+        }
+        $order->save();
+
+        OrderStatusHistory::create([
+            'order_id' => $order->id,
+            'status' => $newStatus,
+            'message' => sprintf('Trạng thái đổi từ %s sang %s.', $oldStatus, $newStatus),
+            'created_by' => auth()->check() ? auth()->id() : null,
+        ]);
+
+        $order->load(['user', 'items']);
+        $statusDisplay = $this->statusDisplay($order->status);
+
+        return response()->json([
+            'message' => 'Đã cập nhật trạng thái đơn.',
+            'data' => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'status_display' => $statusDisplay['label'],
+                'status_class' => $statusDisplay['class'],
+            ],
+        ]);
+    }
+
     private function statusDisplay(string $status): array
     {
         $map = [
-            'pending' => ['label' => 'Pending', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'],
-            'confirmed' => ['label' => 'Processing', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'],
-            'processing' => ['label' => 'Processing', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'],
-            'shipped' => ['label' => 'Shipped', 'class' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'],
-            'delivered' => ['label' => 'Delivered', 'class' => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'],
-            'cancelled' => ['label' => 'Cancelled', 'class' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'],
+            'pending' => ['label' => 'Chờ xử lý', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'],
+            'completed' => ['label' => 'Đã đặt/Thanh toán xong', 'class' => 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'],
+            'confirmed' => ['label' => 'Đã xác nhận', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'],
+            'processing' => ['label' => 'Đang xử lý/Đóng gói', 'class' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'],
+            'shipped' => ['label' => 'Đang giao hàng', 'class' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'],
+            'delivered' => ['label' => 'Đã giao', 'class' => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'],
+            'cancelled' => ['label' => 'Đã hủy', 'class' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'],
         ];
         return $map[$status] ?? ['label' => ucfirst($status), 'class' => 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'];
     }

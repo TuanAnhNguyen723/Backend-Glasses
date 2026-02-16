@@ -39,4 +39,6 @@ Route::prefix('admin')->group(function () {
     Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('admin.orders');
     Route::get('/orders/{id}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('admin.orders.show');
     Route::get('/api/orders', [\App\Http\Controllers\Admin\OrderController::class, 'getOrders'])->name('admin.api.orders');
+    Route::get('/api/orders/status-options', [\App\Http\Controllers\Admin\OrderController::class, 'getStatusOptions'])->name('admin.api.orders.status-options');
+    Route::put('/api/orders/{id}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])->name('admin.api.orders.update-status');
 });
