@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PrescriptionController;
-use App\Http\Controllers\Api\SavedStyleController;
 use App\Http\Controllers\Api\ReviewController;
 
 // Public routes
@@ -39,7 +38,8 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     
-    // User Profile
+    // User Profile & Dashboard (1 request cho trang profile)
+    Route::get('/dashboard', [UserController::class, 'dashboard']);
     Route::get('/profile', [UserController::class, 'profile']);
     Route::put('/profile', [UserController::class, 'updateProfile']);
     Route::post('/profile/avatar', [UserController::class, 'updateAvatar']);
@@ -63,12 +63,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/prescriptions', [PrescriptionController::class, 'store']);
     Route::put('/prescriptions/{id}', [PrescriptionController::class, 'update']);
     Route::delete('/prescriptions/{id}', [PrescriptionController::class, 'destroy']);
-    
-    // Saved Styles (Wishlist)
-    Route::get('/saved-styles', [SavedStyleController::class, 'index']);
-    Route::post('/saved-styles', [SavedStyleController::class, 'store']);
-    Route::delete('/saved-styles/{id}', [SavedStyleController::class, 'destroy']);
-    Route::delete('/saved-styles', [SavedStyleController::class, 'clear']);
     
     // Reviews
     Route::post('/products/{id}/reviews', [ReviewController::class, 'store']);

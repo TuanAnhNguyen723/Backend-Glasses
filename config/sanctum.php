@@ -32,9 +32,12 @@ return [
     | are able to authenticate the request, Sanctum will use the bearer
     | token that's present on an incoming request for authentication.
     |
+    | Chỉ dùng ['web'] — KHÔNG thêm 'api' vì guard 'api' chính là Sanctum,
+    | sẽ gây đệ quy vô hạn (api -> Sanctum -> guard('api') -> Sanctum -> ...).
+    |
     */
 
-    'guard' => ['web', 'api'],
+    'guard' => ['web'],
 
     /*
     |--------------------------------------------------------------------------
