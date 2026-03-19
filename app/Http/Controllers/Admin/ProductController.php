@@ -96,8 +96,6 @@ class ProductController extends Controller
             'low_stock_threshold' => $product->low_stock_threshold,
             'category_id' => $product->category_id,
             'frame_shape' => $product->frame_shape,
-            'frame_type' => $product->frame_type ?? '',
-            'lens_compatibility' => $product->lens_compatibility ?? '',
             'material' => $product->material,
             'badge' => $product->badge,
             'description' => $product->description,
@@ -141,8 +139,6 @@ class ProductController extends Controller
                 'category_id' => 'required|exists:categories,id',
                 'brand_id' => 'nullable|exists:brands,id',
                 'frame_shape' => 'required|string',
-                'frame_type' => 'nullable|string',
-                'lens_compatibility' => 'nullable|string',
                 'material' => 'nullable|string|max:255',
                 'badge' => 'nullable|string|max:100',
                 'description' => 'nullable|string',
@@ -193,8 +189,6 @@ class ProductController extends Controller
                 'category_id' => $validated['category_id'],
                 'brand_id' => $validated['brand_id'] ?? null,
                 'frame_shape' => $validated['frame_shape'],
-                'frame_type' => $validated['frame_type'] ?? null,
-                'lens_compatibility' => $validated['lens_compatibility'] ?? null,
                 'material' => $validated['material'] ?? null,
                 'badge' => $validated['badge'] ?? null,
                 'description' => $validated['description'] ?? '',
@@ -470,11 +464,37 @@ class ProductController extends Controller
                 'stock_status' => $stockStatus,
                 'stock_status_label' => $stockStatusLabel,
                 'is_active' => $product->is_active,
+                'is_featured' => (bool) $product->is_featured,
                 'status_label' => $product->is_active ? 'Hoạt động' : 'Đã lưu trữ',
             ];
         });
 
         return response()->json($products);
+    }
+
+    public function toggleFeatured(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+
+        $validated = $request->validate([
+            'is_featured' => 'nullable|boolean',
+        ]);
+
+        if (array_key_exists('is_featured', $validated)) {
+            $product->is_featured = (bool) $validated['is_featured'];
+        } else {
+            $product->is_featured = ! $product->is_featured;
+        }
+
+        $product->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $product->id,
+                'is_featured' => (bool) $product->is_featured,
+            ],
+        ]);
     }
 
     public function getStats()
@@ -544,8 +564,6 @@ class ProductController extends Controller
                 'low_stock_threshold' => 'nullable|integer|min:0',
                 'category_id' => 'required|exists:categories,id',
                 'frame_shape' => 'required|string',
-                'frame_type' => 'nullable|string',
-                'lens_compatibility' => 'nullable|string',
                 'material' => 'nullable|string|max:255',
                 'badge' => 'nullable|string|max:100',
                 'description' => 'nullable|string',
@@ -605,14 +623,6 @@ class ProductController extends Controller
                 'description' => $validated['description'] ?? '',
                 'is_active' => $request->input('is_active', '1') == '1',
             ];
-            
-            // Add frame_type and lens_compatibility if provided
-            if ($request->has('frame_type')) {
-                $updateData['frame_type'] = $validated['frame_type'] ?? null;
-            }
-            if ($request->has('lens_compatibility')) {
-                $updateData['lens_compatibility'] = $validated['lens_compatibility'] ?? null;
-            }
             
             $product->update($updateData);
         } catch (\Exception $e) {

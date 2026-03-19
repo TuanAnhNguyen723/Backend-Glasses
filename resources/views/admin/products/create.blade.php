@@ -174,28 +174,6 @@
                                         <option value="rectangular">Chữ Nhật</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
-                                        Loại Khung
-                                    </label>
-                                    <select id="frame-type" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3">
-                                        <option value="full-rim">Full-rim</option>
-                                        <option value="semi-rimless">Semi-rimless</option>
-                                        <option value="rimless">Rimless</option>
-                                        <option value="low-bridge">Low Bridge Fit</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
-                                        Tương Thích Ống Kính
-                                    </label>
-                                    <select id="lens-compatibility" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3">
-                                        <option value="single-vision">Single Vision</option>
-                                        <option value="progressive">Progressive</option>
-                                        <option value="reading">Reading Only</option>
-                                        <option value="non-prescription">Non-Prescription</option>
-                                    </select>
-                                </div>
                                 <div class="md:col-span-2">
                                     <div class="border border-[#cfdbe7] dark:border-slate-700 rounded-xl overflow-hidden">
                                         <div class="flex items-center justify-between px-4 py-3 bg-background-light/50 dark:bg-slate-800/50 border-b border-[#cfdbe7] dark:border-slate-700">
@@ -523,8 +501,6 @@
             formData.append('low_stock_threshold', document.getElementById('low-stock-threshold').value || 10);
             formData.append('category_id', category);
             formData.append('frame_shape', frameShape);
-            formData.append('frame_type', document.getElementById('frame-type').value);
-            formData.append('lens_compatibility', document.getElementById('lens-compatibility').value);
             formData.append('material', document.getElementById('product-material').value);
             formData.append('badge', document.getElementById('product-badge').value);
             formData.append('description', document.getElementById('product-description').value);

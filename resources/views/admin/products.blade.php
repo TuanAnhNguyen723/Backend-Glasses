@@ -128,7 +128,6 @@
                     <tr class="bg-[#f6f7f8]/50 dark:bg-slate-800/50 border-b border-[#cfdbe7] dark:border-slate-800">
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Sản Phẩm</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Danh Mục</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Thương Hiệu</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Khung</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Chất Liệu</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Tag</th>
@@ -140,7 +139,7 @@
                 </thead>
                 <tbody id="products-table-body" class="divide-y divide-[#cfdbe7] dark:divide-slate-800">
                     <tr>
-                        <td colspan="10" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td>
+                        <td colspan="9" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td>
                     </tr>
                 </tbody>
             </table>
@@ -235,7 +234,7 @@
             } catch (error) {
                 console.error('Error loading products:', error);
                 document.getElementById('products-table-body').innerHTML = 
-                    '<tr><td colspan="8" class="px-6 py-8 text-center text-red-500">Lỗi khi tải dữ liệu</td></tr>';
+                    '<tr><td colspan="9" class="px-6 py-8 text-center text-red-500">Lỗi khi tải dữ liệu</td></tr>';
             }
         }
 
@@ -243,7 +242,7 @@
         function renderProducts(products) {
             if (products.length === 0) {
                 document.getElementById('products-table-body').innerHTML = 
-                    '<tr><td colspan="10" class="px-6 py-8 text-center text-[#4c739a]">Không có sản phẩm nào</td></tr>';
+                    '<tr><td colspan="9" class="px-6 py-8 text-center text-[#4c739a]">Không có sản phẩm nào</td></tr>';
                 return;
             }
 
@@ -296,12 +295,8 @@
                             <span class="text-sm font-medium text-[#0d141b] dark:text-white">${product.category || '-'}</span>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="text-sm font-medium text-[#0d141b] dark:text-white">${product.brand || '-'}</span>
-                        </td>
-                        <td class="px-6 py-4">
                             <div class="flex flex-wrap items-center gap-1.5">
-                                <span class="px-3 py-1 rounded-lg ${product.frame_shape === 'aviator' ? 'bg-primary/10 text-primary' : 'bg-[#e7edf3] dark:bg-slate-800 text-[#0d141b] dark:text-slate-300'} text-xs font-bold whitespace-nowrap">${frameLabel}</span>
-                                ${product.frame_type ? `<span class="px-3 py-1 rounded-lg bg-[#e7edf3] dark:bg-slate-800 text-[#0d141b] dark:text-slate-300 text-xs font-bold whitespace-nowrap">${product.frame_type}</span>` : ''}
+                                <span class="px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold whitespace-nowrap">${frameLabel}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4">
@@ -329,6 +324,9 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="toggleFeaturedProduct(${product.id}, ${product.is_featured ? 'true' : 'false'})" class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg ${product.is_featured ? 'text-amber-500' : 'text-[#4c739a]'} hover:text-amber-500 border border-transparent hover:border-[#cfdbe7] transition-all" title="${product.is_featured ? 'Bỏ nổi bật' : 'Đánh dấu nổi bật'}">
+                                    <span class="material-symbols-outlined text-lg">${product.is_featured ? 'star' : 'star_border'}</span>
+                                </button>
                                 <a href="/admin/products/${product.id}/edit" class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-primary border border-transparent hover:border-[#cfdbe7] transition-all">
                                     <span class="material-symbols-outlined text-lg">edit</span>
                                 </a>
@@ -670,6 +668,36 @@
                 notificationManager.error('Lỗi khi xóa sản phẩm: ' + error.message, 'Lỗi');
                 button.disabled = false;
                 button.textContent = originalText;
+            }
+        }
+
+        async function toggleFeaturedProduct(productId, currentlyFeatured) {
+            try {
+                const response = await fetch(`/admin/api/products/${productId}/featured`, {
+                    method: 'PUT',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        is_featured: !currentlyFeatured
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    notificationManager.success(
+                        data.data?.is_featured ? 'Đã đánh dấu sản phẩm nổi bật' : 'Đã bỏ đánh dấu nổi bật',
+                        'Thành công'
+                    );
+                    loadProducts(currentPage);
+                } else {
+                    notificationManager.error(data.message || 'Không thể cập nhật nổi bật', 'Lỗi');
+                }
+            } catch (error) {
+                console.error('Error toggling featured:', error);
+                notificationManager.error('Lỗi khi cập nhật nổi bật: ' + error.message, 'Lỗi');
             }
         }
     </script>
