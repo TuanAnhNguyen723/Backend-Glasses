@@ -105,6 +105,13 @@
                 return div.innerHTML;
             }
 
+            // Không dùng escapeHtml cho URL (signed URL có '&' sẽ bị đổi thành '&amp;' -> hỏng link).
+            // Chỉ escape tối thiểu để an toàn khi nhét vào CSS url('...').
+            function cssUrl(url) {
+                if (!url) return '';
+                return String(url).replace(/\\/g, '\\\\').replace(/'/g, "%27");
+            }
+
             function getOrders(page) {
                 const params = new URLSearchParams({
                     page: page || 1,
@@ -132,7 +139,7 @@
                         } else {
                             ordersTbody.innerHTML = data.map(function(order) {
                                 const productImageStyle = order.product_image_url
-                                    ? 'background-image: url(\'' + escapeHtml(order.product_image_url) + '\')'
+                                    ? 'background-image: url(\'' + cssUrl(order.product_image_url) + '\')'
                                     : 'background-color: #e7edf3';
                                 var detailUrl = '{{ route("admin.orders") }}/' + order.id;
                                 var accountBadge = order.customer_id

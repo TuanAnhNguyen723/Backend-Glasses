@@ -103,11 +103,20 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
-                                        Giá (VNĐ) <span class="text-red-500">*</span>
+                                        Giá ưu đãi (VNĐ) <span class="text-red-500">*</span>
                                     </label>
                                     <div class="relative">
                                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] text-sm">₫</span>
                                         <input id="product-price" class="w-full pl-8 rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3" placeholder="0" type="number" min="0" step="1000" required/>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
+                                        Giá gốc (VNĐ)
+                                    </label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] text-sm">₫</span>
+                                        <input id="product-compare-price" class="w-full pl-8 rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3" placeholder="0" type="number" min="0" step="1000"/>
                                     </div>
                                 </div>
                                 <div>
@@ -128,14 +137,6 @@
                                     </label>
                                     <select id="product-category" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3" required>
                                         <option value="">Chọn danh mục...</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
-                                        Thương Hiệu
-                                    </label>
-                                    <select id="product-brand" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3">
-                                        <option value="">Chọn thương hiệu...</option>
                                     </select>
                                 </div>
                                 <div>
@@ -195,6 +196,39 @@
                                         <option value="non-prescription">Non-Prescription</option>
                                     </select>
                                 </div>
+                                <div class="md:col-span-2">
+                                    <div class="border border-[#cfdbe7] dark:border-slate-700 rounded-xl overflow-hidden">
+                                        <div class="flex items-center justify-between px-4 py-3 bg-background-light/50 dark:bg-slate-800/50 border-b border-[#cfdbe7] dark:border-slate-700">
+                                            <div>
+                                                <p class="text-sm font-extrabold text-[#0d141b] dark:text-white">Lens Options</p>
+                                                <p class="text-xs text-[#4c739a] dark:text-slate-400">Các lựa chọn ống kính theo từng sản phẩm (giá cộng thêm, mặc định).</p>
+                                            </div>
+                                            <button type="button" id="add-lens-option-btn" class="flex items-center gap-2 h-9 px-3 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90">
+                                                <span class="material-symbols-outlined text-base">add</span>
+                                                Thêm option
+                                            </button>
+                                        </div>
+                                        <div class="p-4">
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full min-w-[720px] text-left border-separate border-spacing-0">
+                                                    <thead>
+                                                        <tr class="text-[11px] font-black text-[#4c739a] dark:text-slate-300 uppercase tracking-wider bg-[#f6f7f8] dark:bg-slate-800/70">
+                                                            <th class="py-2.5 px-3 rounded-tl-lg border-b border-[#e7edf3] dark:border-slate-700">Tên</th>
+                                                            <th class="py-2.5 px-3 whitespace-nowrap border-b border-[#e7edf3] dark:border-slate-700">Giá + (VNĐ)</th>
+                                                            <th class="py-2.5 px-3 text-center border-b border-[#e7edf3] dark:border-slate-700">Mặc định</th>
+                                                            <th class="py-2.5 px-3 text-center border-b border-[#e7edf3] dark:border-slate-700">Hiện</th>
+                                                            <th class="py-2.5 px-3 text-right rounded-tr-lg border-b border-[#e7edf3] dark:border-slate-700">Xóa</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="lens-options-tbody" class="bg-white dark:bg-slate-900">
+                                                        <!-- rows by JS -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <p class="text-xs text-[#4c739a] dark:text-slate-400 mt-2">Nếu bạn thêm option mà không chọn mặc định, hệ thống sẽ tự chọn option đầu tiên làm mặc định.</p>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div>
                                     <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
                                         Trạng Thái
@@ -244,12 +278,11 @@
     @php
         $editBootstrap = array(
             'productId' => $product->id,
-            'productBrandId' => $product->brand_id,
             'product' => $product,
             'productImages' => $product->images,
             'productColors' => $product->colors,
+            'lensOptions' => $product->lensOptions,
             'categories' => $categories,
-            'brands' => $brands,
         );
     @endphp
     <script type="application/json" id="edit-product-bootstrap">
@@ -261,13 +294,14 @@
         let deletedImageIds = []; // IDs of images to delete
         let primaryImageIndex = 0;
         let lastPickedColor = '#000000';
+        let lensOptionRowId = 0;
         const productId = __BOOTSTRAP__.productId;
         const productData = __BOOTSTRAP__.product;
-        const productBrandId = __BOOTSTRAP__.productBrandId;
         const productImagesData = __BOOTSTRAP__.productImages;
         const productColorsData = __BOOTSTRAP__.productColors;
+        const lensOptionsData = __BOOTSTRAP__.lensOptions;
         const categoriesData = __BOOTSTRAP__.categories;
-        const brandsData = __BOOTSTRAP__.brands;
+        
         
         // DOM elements - will be initialized on DOMContentLoaded
         let gallery, galleryGrid, uploadArea, fileInput;
@@ -324,6 +358,7 @@
             const nameEl = document.getElementById('product-name');
             const skuEl = document.getElementById('product-sku');
             const priceEl = document.getElementById('product-price');
+            const comparePriceEl = document.getElementById('product-compare-price');
             const stockEl = document.getElementById('product-stock');
             const thresholdEl = document.getElementById('low-stock-threshold');
             const categoryEl = document.getElementById('product-category');
@@ -338,6 +373,7 @@
             if (nameEl) nameEl.value = productData.name || '';
             if (skuEl) skuEl.value = productData.sku || '';
             if (priceEl) priceEl.value = productData.base_price || '';
+            if (comparePriceEl) comparePriceEl.value = productData.compare_price || '';
             if (stockEl) stockEl.value = productData.stock_quantity || '';
             if (thresholdEl) thresholdEl.value = productData.low_stock_threshold || '';
             if (frameShapeEl) frameShapeEl.value = productData.frame_shape || '';
@@ -420,26 +456,6 @@
             } else {
                 console.warn('Categories data is not available');
             }
-            
-            // Load brands
-            const brandSelect = document.getElementById('product-brand');
-            if (brandSelect) {
-                brandSelect.innerHTML = '<option value="">Chọn thương hiệu...</option>';
-                
-                if (brandsData && Array.isArray(brandsData)) {
-                    brandsData.forEach(brand => {
-                        const option = document.createElement('option');
-                        option.value = brand.id;
-                        option.textContent = brand.name;
-                        brandSelect.appendChild(option);
-                    });
-                    
-                    console.log('Brands loaded:', brandsData.length, 'brands');
-                } else {
-                    console.warn('Brands data is not available');
-                }
-            }
-            
             return Promise.resolve();
         }
         
@@ -467,35 +483,6 @@
             }
         }
         
-        // Set brand value after brands are loaded
-        function setBrandValue(brandId) {
-            const brandEl = document.getElementById('product-brand');
-            if (!brandEl) {
-                console.error('Brand element not found!');
-                return false;
-            }
-            
-            if (!brandId) {
-                brandEl.value = '';
-                return true;
-            }
-            
-            // Check if the option exists
-            const optionExists = Array.from(brandEl.options).some(opt => opt.value == brandId);
-            if (optionExists) {
-                brandEl.value = brandId;
-                console.log('Brand set successfully to:', brandId);
-                return true;
-            } else {
-                console.warn('Brand option not found for ID:', brandId);
-                // Try again after a short delay in case options are still being added
-                setTimeout(() => {
-                    setBrandValue(brandId);
-                }, 100);
-                return false;
-            }
-        }
-
         // File upload handling - initialize on DOM ready
         function initFileUpload() {
             uploadArea = document.getElementById('upload-area');
@@ -674,10 +661,10 @@
             formData.append('name', name);
             formData.append('sku', sku);
             formData.append('base_price', price);
+            formData.append('compare_price', document.getElementById('product-compare-price').value || '');
             formData.append('stock_quantity', stock);
             formData.append('low_stock_threshold', document.getElementById('low-stock-threshold').value || 10);
             formData.append('category_id', category);
-            formData.append('brand_id', document.getElementById('product-brand').value || '');
             formData.append('frame_shape', frameShape);
             formData.append('frame_type', document.getElementById('frame-type').value);
             formData.append('lens_compatibility', document.getElementById('lens-compatibility').value);
@@ -685,6 +672,9 @@
             formData.append('badge', document.getElementById('product-badge').value);
             formData.append('description', document.getElementById('product-description').value);
             formData.append('is_active', document.getElementById('product-status').value);
+
+            // Lens options (per-product): always send (empty array clears)
+            formData.append('lens_options', JSON.stringify(collectLensOptions()));
             
             // Add deleted images
             if (deletedImageIds.length > 0) {
@@ -787,27 +777,128 @@
                     setCategoryValue(productData.category_id);
                 }
                 
-                // Set brand value immediately after brands are loaded
-                // Check productBrandId (from PHP), productData.brand_id, and productData.brand.id
-                const brandId = productBrandId || productData?.brand_id || productData?.brand?.id || null;
-                if (brandId) {
-                    console.log('Setting brand value:', brandId, 'From productBrandId:', productBrandId, 'From productData.brand_id:', productData?.brand_id);
-                    // Use setTimeout to ensure dropdown is fully populated
-                    setTimeout(() => {
-                        setBrandValue(brandId);
-                    }, 50);
-                } else {
-                    console.log('No brand_id found. productBrandId:', productBrandId, 'productData.brand_id:', productData?.brand_id, 'productData.brand:', productData?.brand);
-                }
-                
                 // Load product data
                 loadProductData();
+
+                // Init lens options UI after product data is available
+                initLensOptions();
             }).catch(error => {
                 console.error('Error loading categories:', error);
                 // Still try to load product data even if categories fail
                 loadProductData();
+                initLensOptions();
             });
             
         });
+
+        function initLensOptions() {
+            const tbody = document.getElementById('lens-options-tbody');
+            const addBtn = document.getElementById('add-lens-option-btn');
+            if (!tbody || !addBtn) return;
+
+            tbody.innerHTML = '';
+            lensOptionRowId = 0;
+
+            const items = Array.isArray(lensOptionsData) ? lensOptionsData : [];
+            if (items.length > 0) {
+                items
+                    .slice()
+                    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                    .forEach((opt) => {
+                        addLensOptionRow({
+                            name: opt?.name ?? '',
+                            price_adjustment: opt?.price_adjustment ?? 0,
+                            is_default: !!opt?.is_default,
+                            is_active: (typeof opt?.is_active !== 'undefined') ? !!opt?.is_active : true,
+                            sort_order: opt?.sort_order ?? undefined,
+                        });
+                    });
+            } else {
+                // Default row for new setup
+                addLensOptionRow({ name: 'Tiêu chuẩn', price_adjustment: 0, is_default: true, is_active: true });
+            }
+
+            addBtn.addEventListener('click', function() {
+                addLensOptionRow({ name: '', price_adjustment: 0, is_default: false, is_active: true });
+            });
+        }
+
+        function addLensOptionRow(data) {
+            lensOptionRowId++;
+            const tbody = document.getElementById('lens-options-tbody');
+            if (!tbody) return;
+
+            const rowId = 'lens-opt-' + lensOptionRowId;
+            const name = (data && data.name) ? data.name : '';
+            const price = (data && typeof data.price_adjustment !== 'undefined') ? data.price_adjustment : 0;
+            const isDefault = !!(data && data.is_default);
+            const isActive = (data && typeof data.is_active !== 'undefined') ? !!data.is_active : true;
+
+            const tr = document.createElement('tr');
+            tr.className = 'lens-opt-row';
+            tr.setAttribute('data-row-id', rowId);
+            tr.innerHTML = `
+                <td class="py-2.5 px-3 align-middle border-b border-[#e7edf3] dark:border-slate-700">
+                    <input type="text" class="lens-opt-name w-full h-10 rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white text-sm font-semibold px-3 focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="VD: Tròng chống ánh sáng xanh" value="${String(name).replace(/"/g, '&quot;')}"/>
+                </td>
+                <td class="py-2.5 px-3 align-middle border-b border-[#e7edf3] dark:border-slate-700">
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] text-sm">₫</span>
+                        <input type="number" min="0" step="1000" class="lens-opt-price w-full h-10 pl-8 rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white text-sm font-semibold px-3 focus:ring-2 focus:ring-primary focus:border-transparent" value="${price}"/>
+                    </div>
+                </td>
+                <td class="py-2.5 px-3 align-middle text-center border-b border-[#e7edf3] dark:border-slate-700">
+                    <input type="radio" name="lens-opt-default" class="lens-opt-default h-4 w-4 accent-primary" ${isDefault ? 'checked' : ''}/>
+                </td>
+                <td class="py-2.5 px-3 align-middle text-center border-b border-[#e7edf3] dark:border-slate-700">
+                    <input type="checkbox" class="lens-opt-active h-4 w-4 accent-primary" ${isActive ? 'checked' : ''}/>
+                </td>
+                <td class="py-2.5 px-3 align-middle text-right border-b border-[#e7edf3] dark:border-slate-700">
+                    <button type="button" class="lens-opt-remove inline-flex items-center justify-center h-9 w-9 rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/30 transition-colors" title="Xóa option">
+                        <span class="material-symbols-outlined text-[18px] leading-none">delete</span>
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+
+            tr.querySelector('.lens-opt-remove').addEventListener('click', function() {
+                const rows = Array.from(document.querySelectorAll('.lens-opt-row'));
+                const isOnly = rows.length <= 1;
+                if (isOnly) {
+                    tr.querySelector('.lens-opt-name').value = '';
+                    tr.querySelector('.lens-opt-price').value = 0;
+                    tr.querySelector('.lens-opt-active').checked = true;
+                    tr.querySelector('.lens-opt-default').checked = true;
+                    return;
+                }
+                const wasDefault = tr.querySelector('.lens-opt-default').checked;
+                tr.remove();
+                if (wasDefault) {
+                    const first = document.querySelector('.lens-opt-row .lens-opt-default');
+                    if (first) first.checked = true;
+                }
+            });
+        }
+
+        function collectLensOptions() {
+            const rows = Array.from(document.querySelectorAll('.lens-opt-row'));
+            const options = [];
+            rows.forEach((tr, idx) => {
+                const name = (tr.querySelector('.lens-opt-name')?.value || '').trim();
+                const price = parseFloat(tr.querySelector('.lens-opt-price')?.value || '0') || 0;
+                const isDefault = !!tr.querySelector('.lens-opt-default')?.checked;
+                const isActive = !!tr.querySelector('.lens-opt-active')?.checked;
+                if (!name) return;
+                options.push({
+                    name,
+                    price_adjustment: price,
+                    is_default: isDefault,
+                    is_active: isActive,
+                    sort_order: idx + 1,
+                });
+            });
+            return options;
+        }
     </script>
 @endpush

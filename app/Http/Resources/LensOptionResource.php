@@ -12,9 +12,11 @@ class LensOptionResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'price' => $this->price,
-            'price_change' => $this->price,
+            'description' => $this->description,
+            'price_adjustment' => (float) $this->price_adjustment,
+            'is_default' => (bool) $this->is_default,
             'is_active' => $this->is_active,
+            'sort_order' => $this->sort_order,
         ];
     }
 }

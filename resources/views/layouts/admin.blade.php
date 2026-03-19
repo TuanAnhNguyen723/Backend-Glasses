@@ -60,10 +60,6 @@
                         <span class="material-symbols-outlined {{ $currentRoute === 'admin.products' ? 'fill-1' : 'text-[#4c739a]' }}">inventory_2</span>
                         <p class="text-sm {{ $currentRoute === 'admin.products' ? 'font-bold' : 'font-semibold' }}">Kho Hàng</p>
                     </a>
-                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.brands' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.brands') }}">
-                        <span class="material-symbols-outlined {{ $currentRoute === 'admin.brands' ? 'fill-1' : 'text-[#4c739a]' }}" style="font-variation-settings: 'FILL' {{ $currentRoute === 'admin.brands' ? 1 : 0 }}">branding_watermark</span>
-                        <p class="text-sm {{ $currentRoute === 'admin.brands' ? 'font-bold' : 'font-semibold' }}">Thương Hiệu</p>
-                    </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.orders' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.orders') }}">
                         <span class="material-symbols-outlined {{ $currentRoute === 'admin.orders' ? 'fill-1' : 'text-[#4c739a]' }}" style="font-variation-settings: 'FILL' {{ $currentRoute === 'admin.orders' ? 1 : 0 }}">shopping_bag</span>
                         <p class="text-sm {{ $currentRoute === 'admin.orders' ? 'font-bold' : 'font-semibold' }}">Đơn Hàng</p>

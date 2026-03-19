@@ -7,6 +7,8 @@ use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class OrderController extends Controller
 {
@@ -39,7 +41,7 @@ class OrderController extends Controller
         $search = trim((string) $request->get('search', ''));
         $statusFilter = $request->get('status', 'all'); // all | pending | completed | cancelled
 
-        $query = Order::with(['user', 'items'])
+        $query = Order::with(['user', 'items.product.primaryImage'])
             ->orderBy('created_at', 'desc');
 
         if ($statusFilter === 'pending') {
@@ -69,7 +71,26 @@ class OrderController extends Controller
             $customerName = $order->user ? $order->user->name : $order->shipping_name;
             $customerEmail = $order->user ? $order->user->email : $order->shipping_email;
             $productName = $firstItem ? $firstItem->product_name : '—';
-            $productImageUrl = $firstItem ? $firstItem->product_image_url : null;
+            // Không dùng signed URL đã lưu trong order_items (có thể hết hạn).
+            // Thay vào đó lấy từ product.primaryImage để tạo signed URL mới (nếu có image_path),
+            // hoặc dùng image_url tĩnh (nếu có).
+            $productImageUrl = null;
+            if ($firstItem && $firstItem->product && $firstItem->product->primaryImage) {
+                $primary = $firstItem->product->primaryImage;
+                if (! empty($primary->image_url)) {
+                    $productImageUrl = $primary->image_url;
+                } elseif (! empty($primary->image_path)) {
+                    try {
+                        $productImageUrl = Storage::disk('backblaze')->temporaryUrl($primary->image_path, now()->addWeek());
+                    } catch (\Throwable $e) {
+                        $productImageUrl = null;
+                    }
+                }
+            }
+            // Fallback cuối: dùng url đã lưu (nếu có) cho trường hợp ảnh public.
+            if (! $productImageUrl && $firstItem) {
+                $productImageUrl = $firstItem->product_image_url;
+            }
 
             $paymentStatus = $order->payment_status ?? ($order->status === 'cancelled' ? 'refunded' : 'pending');
             $paymentDisplay = $this->paymentDisplay($paymentStatus);
@@ -137,7 +158,7 @@ class OrderController extends Controller
             'order_id' => $order->id,
             'status' => $newStatus,
             'message' => sprintf('Trạng thái đổi từ %s sang %s.', $oldStatus, $newStatus),
-            'created_by' => auth()->check() ? auth()->id() : null,
+            'created_by' => Auth::check() ? Auth::id() : null,
         ]);
 
         $order->load(['user', 'items']);
