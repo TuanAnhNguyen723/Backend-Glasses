@@ -80,10 +80,9 @@ API sẽ chạy tại: `http://localhost:8000`
 
 #### Authentication
 - `POST /api/v1/logout` - Đăng xuất
-- `GET /api/v1/me` - Thông tin user hiện tại
 
 #### User Profile
-- `GET /api/v1/profile` - Lấy thông tin profile
+- `GET /api/v1/profile` - Thông tin user hiện tại (profile)
 - `PUT /api/v1/profile` - Cập nhật profile
 - `POST /api/v1/profile/avatar` - Cập nhật avatar
 

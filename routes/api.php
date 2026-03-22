@@ -36,9 +36,8 @@ Route::prefix('v1')->group(function () {
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']);
     
-    // User Profile & Dashboard (1 request cho trang profile)
+    // User Profile & Dashboard (dùng /profile thay /me - cùng mục đích, profile có format tối ưu hơn)
     Route::get('/dashboard', [UserController::class, 'dashboard']);
     Route::get('/profile', [UserController::class, 'profile']);
     Route::put('/profile', [UserController::class, 'updateProfile']);
