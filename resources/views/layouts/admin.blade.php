@@ -64,9 +64,9 @@
                         <span class="material-symbols-outlined {{ $currentRoute === 'admin.orders' ? 'fill-1' : 'text-[#4c739a]' }}" style="font-variation-settings: 'FILL' {{ $currentRoute === 'admin.orders' ? 1 : 0 }}">shopping_bag</span>
                         <p class="text-sm {{ $currentRoute === 'admin.orders' ? 'font-bold' : 'font-semibold' }}">Đơn Hàng</p>
                     </a>
-                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors" href="#">
-                        <span class="material-symbols-outlined text-[#4c739a]">group</span>
-                        <p class="text-sm font-semibold">Khách Hàng</p>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ str_starts_with($currentRoute ?? '', 'admin.customers') ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.customers') }}">
+                        <span class="material-symbols-outlined {{ str_starts_with($currentRoute ?? '', 'admin.customers') ? 'fill-1' : 'text-[#4c739a]' }}">group</span>
+                        <p class="text-sm {{ str_starts_with($currentRoute ?? '', 'admin.customers') ? 'font-bold' : 'font-semibold' }}">Khách Hàng</p>
                     </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors" href="#">
                         <span class="material-symbols-outlined text-[#4c739a]">analytics</span>

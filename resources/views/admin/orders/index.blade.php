@@ -92,6 +92,10 @@
             let currentFilter = 'all';
             let searchQuery = '';
             let searchTimeout = null;
+            let customerFilter = (function() {
+                var m = /customer=(\d+)/.exec(window.location.search);
+                return m ? m[1] : '';
+            })();
 
             const perPage = 10;
             const ordersTbody = document.getElementById('orders-tbody');
@@ -119,6 +123,7 @@
                 });
                 if (currentFilter !== 'all') params.append('status', currentFilter);
                 if (searchQuery) params.append('search', searchQuery);
+                if (customerFilter) params.append('customer', customerFilter);
 
                 fetch('{{ route("admin.api.orders") }}?' + params.toString(), {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }

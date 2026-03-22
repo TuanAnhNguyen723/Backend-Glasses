@@ -178,7 +178,7 @@
             </div>
             <div class="flex flex-col">
                 <span class="text-[#4c739a] text-xs font-bold uppercase tracking-wider">Giá Trị Tồn Kho</span>
-                <span id="stock-value" class="text-xl font-black">0 VNĐ</span>
+                <span id="stock-value" class="text-xl font-black">0 đ</span>
             </div>
         </div>
     </div>
@@ -186,12 +186,9 @@
 
 @push('scripts')
     <script>
-        // Format số tiền VNĐ
+        // Format số tiền (đ)
         function formatCurrency(amount) {
-            return new Intl.NumberFormat('vi-VN', {
-                style: 'currency',
-                currency: 'VND'
-            }).format(amount);
+            return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
         }
 
         // Format số với dấu phẩy
@@ -305,7 +302,7 @@
                         <td class="px-6 py-4">
                             ${product.badge ? `<span class="px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold">${product.badge}</span>` : '-'}
                         </td>
-                        <td class="px-6 py-4 text-sm font-bold">${product.price} VNĐ</td>
+                        <td class="px-6 py-4 text-sm font-bold">${product.price} đ</td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-24 h-1.5 rounded-full bg-[#cfdbe7] dark:bg-slate-700 overflow-hidden">

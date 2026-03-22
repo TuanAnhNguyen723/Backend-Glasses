@@ -42,4 +42,10 @@ Route::prefix('admin')->group(function () {
     Route::get('/api/orders', [\App\Http\Controllers\Admin\OrderController::class, 'getOrders'])->name('admin.api.orders');
     Route::get('/api/orders/status-options', [\App\Http\Controllers\Admin\OrderController::class, 'getStatusOptions'])->name('admin.api.orders.status-options');
     Route::put('/api/orders/{id}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])->name('admin.api.orders.update-status');
+
+    // Customer Management Routes
+    Route::get('/customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('admin.customers');
+    Route::get('/customers/{id}', [\App\Http\Controllers\Admin\CustomerController::class, 'show'])->name('admin.customers.show');
+    Route::get('/api/customers', [\App\Http\Controllers\Admin\CustomerController::class, 'getCustomers'])->name('admin.api.customers');
+    Route::get('/api/customers/{id}', [\App\Http\Controllers\Admin\CustomerController::class, 'getCustomerDetail'])->name('admin.api.customers.detail');
 });

@@ -40,9 +40,14 @@ class OrderController extends Controller
         $perPage = max(1, min(50, (int) $request->get('per_page', 10)));
         $search = trim((string) $request->get('search', ''));
         $statusFilter = $request->get('status', 'all'); // all | pending | completed | cancelled
+        $customerId = $request->get('customer'); // filter by user_id
 
         $query = Order::with(['user', 'items.product.primaryImage'])
             ->orderBy('created_at', 'desc');
+
+        if ($customerId && is_numeric($customerId)) {
+            $query->where('user_id', (int) $customerId);
+        }
 
         if ($statusFilter === 'pending') {
             $query->where('status', 'pending');
@@ -110,7 +115,7 @@ class OrderController extends Controller
                 'payment_display' => $paymentDisplay['label'],
                 'payment_class' => $paymentDisplay['class'],
                 'total_amount' => (float) $order->total_amount,
-                'total_formatted' => number_format((float) $order->total_amount, 2),
+                'total_formatted' => number_format((float) $order->total_amount, 0),
                 'created_at' => $order->created_at->format('M d, Y'),
             ];
         });

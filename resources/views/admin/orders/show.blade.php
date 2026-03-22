@@ -17,7 +17,7 @@
 @section('content')
     <div class="bg-white dark:bg-slate-900 rounded-xl border border-[#e7edf3] dark:border-slate-800 shadow-sm p-6">
         <p class="text-[#4c739a] dark:text-slate-400">Trạng thái: <strong class="text-[#0d141b] dark:text-white">{{ $order->status }}</strong></p>
-        <p class="text-[#4c739a] dark:text-slate-400 mt-2">Tổng cộng: <strong class="text-[#0d141b] dark:text-white">{{ number_format($order->total_amount, 2) }} ₫</strong></p>
+        <p class="text-[#4c739a] dark:text-slate-400 mt-2">Tổng cộng: <strong class="text-[#0d141b] dark:text-white">{{ number_format($order->total_amount, 0) }} ₫</strong></p>
         <p class="text-[#4c739a] dark:text-slate-400 mt-2">Khách hàng: {{ $order->user ? $order->user->name : $order->shipping_name }} ({{ $order->shipping_email }})</p>
         <p class="text-sm text-[#4c739a] dark:text-slate-400 mt-4">Trang chi tiết đơn hàng có thể mở rộng thêm nội dung sau.</p>
     </div>
