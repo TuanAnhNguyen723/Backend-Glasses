@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Review;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -71,5 +72,29 @@ class User extends Authenticatable
     public function cartItems()
     {
         return $this->hasMany(CartItem::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Kiểm tra user đã mua sản phẩm chưa (đơn đã giao hoặc đã thanh toán xong).
+     */
+    public function hasPurchasedProduct(int $productId): bool
+    {
+        $allowedStatuses = [
+            Order::STATUS_DELIVERED,
+            Order::STATUS_COMPLETED,
+            Order::STATUS_CONFIRMED,
+            Order::STATUS_SHIPPED,
+            Order::STATUS_PROCESSING,
+        ];
+
+        return $this->orders()
+            ->whereIn('status', $allowedStatuses)
+            ->whereHas('items', fn ($q) => $q->where('product_id', $productId))
+            ->exists();
     }
 }

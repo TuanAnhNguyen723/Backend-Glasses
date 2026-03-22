@@ -25,4 +25,21 @@ class Review extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Cập nhật rating_average, rating_count, review_count trên Product.
+     */
+    public static function recalculateProductRating(Product $product): void
+    {
+        $stats = self::where('product_id', $product->id)
+            ->where('is_approved', true)
+            ->selectRaw('COUNT(*) as count, AVG(rating) as avg_rating')
+            ->first();
+
+        $product->update([
+            'review_count' => $stats->count ?? 0,
+            'rating_count' => $stats->count ?? 0,
+            'rating_average' => round((float) ($stats->avg_rating ?? 0), 2),
+        ]);
+    }
 }

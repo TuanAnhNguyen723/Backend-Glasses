@@ -64,6 +64,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::delete('/prescriptions/{id}', [PrescriptionController::class, 'destroy']);
     
     // Reviews
+    Route::get('/products/{id}/my-review', [ReviewController::class, 'myReview']);
     Route::post('/products/{id}/reviews', [ReviewController::class, 'store']);
     Route::put('/reviews/{id}', [ReviewController::class, 'update']);
     Route::delete('/reviews/{id}', [ReviewController::class, 'destroy']);

@@ -74,7 +74,7 @@ API sẽ chạy tại: `http://localhost:8000`
 - `GET /api/v1/products` - Danh sách sản phẩm
 - `GET /api/v1/products/{id}` - Chi tiết sản phẩm
 - `GET /api/v1/categories` - Danh sách danh mục
-- `GET /api/v1/products/{id}/reviews` - Đánh giá sản phẩm
+- `GET /api/v1/products/{id}/reviews` - Danh sách đánh giá sản phẩm (phân trang)
 
 ### Protected Routes (cần authentication)
 
@@ -113,9 +113,10 @@ API sẽ chạy tại: `http://localhost:8000`
 - `DELETE /api/v1/saved-styles` - Xóa tất cả style đã lưu
 
 #### Reviews
-- `POST /api/v1/products/{id}/reviews` - Tạo đánh giá
-- `PUT /api/v1/reviews/{id}` - Cập nhật đánh giá
-- `DELETE /api/v1/reviews/{id}` - Xóa đánh giá
+- `GET /api/v1/products/{id}/my-review` - Đánh giá của user hiện tại (nếu có) + can_review
+- `POST /api/v1/products/{id}/reviews` - Tạo đánh giá (chỉ khi đã mua sản phẩm)
+- `PUT /api/v1/reviews/{id}` - Cập nhật đánh giá (chỉ chủ sở hữu)
+- `DELETE /api/v1/reviews/{id}` - Xóa đánh giá (chỉ chủ sở hữu)
 
 #### Promo Codes
 - `POST /api/v1/promo-codes/validate` - Validate mã giảm giá
