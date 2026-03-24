@@ -7,6 +7,7 @@ use App\Http\Resources\OrderResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
@@ -40,14 +41,29 @@ class UserController extends Controller
      */
     private function profileArray($user): array
     {
+        $avatarUrl = null;
+        if ($user->avatar) {
+            if (str_starts_with((string) $user->avatar, 'http')) {
+                $avatarUrl = $user->avatar; // URL từ OAuth hoặc nguồn ngoài
+            } elseif (str_starts_with((string) $user->avatar, 'local:')) {
+                // Fallback local (khi B2 lỗi)
+                $avatarUrl = url('/storage/' . substr($user->avatar, 6));
+            } elseif (str_starts_with((string) $user->avatar, 'avatars/')) {
+                // Path B2: dùng direct URL (bucket public, giống products)
+                $endpoint = rtrim(config('filesystems.disks.backblaze.endpoint'), '/');
+                $bucket = config('filesystems.disks.backblaze.bucket');
+                $avatarUrl = $endpoint . '/' . $bucket . '/' . $user->avatar;
+            } else {
+                $avatarUrl = url('/storage/' . $user->avatar);
+            }
+        }
+
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
-            'avatar' => $user->avatar
-                ? (str_starts_with((string) $user->avatar, 'http') ? $user->avatar : url('/storage/' . $user->avatar))
-                : null,
+            'avatar' => $avatarUrl,
             'date_of_birth' => $user->date_of_birth?->format('Y-m-d'),
             'gender' => $user->gender,
             'is_premium' => (bool) $user->is_premium,
@@ -97,14 +113,44 @@ class UserController extends Controller
 
         $user = $request->user();
 
-        // Xóa ảnh cũ nếu có (path dạng avatars/xxx)
+        // Xóa ảnh cũ (B2 hoặc local)
         if ($user->avatar && ! str_starts_with((string) $user->avatar, 'http')) {
-            Storage::disk('public')->delete($user->avatar);
+            if (str_starts_with((string) $user->avatar, 'local:')) {
+                Storage::disk('public')->delete(substr($user->avatar, 6));
+            } elseif (str_starts_with((string) $user->avatar, 'avatars/')) {
+                Storage::disk('backblaze')->delete($user->avatar);
+            } else {
+                Storage::disk('public')->delete($user->avatar);
+            }
         }
 
+        // Upload lên B2 (giống products)
         $file = $request->file('avatar');
-        $path = $file->store('avatars', 'public');
-        $user->avatar = $path; // Lưu path, profileArray sẽ convert sang URL
+        $ext = $file->getClientOriginalExtension() ?: 'jpg';
+        $fileName = 'avatars/user-' . $user->id . '-' . time() . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
+
+        try {
+            $stored = Storage::disk('backblaze')->put($fileName, file_get_contents($file->getRealPath()));
+            if ($stored === false) {
+                throw new \RuntimeException('B2 put returned false - kiểm tra quyền Application Key với bucket Glasses');
+            }
+        } catch (\Throwable $e) {
+            Log::error('Avatar B2 upload failed: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'path' => $fileName,
+                'exception' => $e,
+            ]);
+            // Fallback: lưu local (storage/public) - dùng prefix khác để phân biệt B2
+            $localPath = $file->store('avatars', 'public');
+            $user->avatar = 'local:' . $localPath;
+            $user->save();
+            return response()->json([
+                'message' => 'Cập nhật avatar thành công (lưu local). Upload B2 thất bại: ' . $e->getMessage(),
+                'user' => $this->profileArray($user->fresh()),
+            ]);
+        }
+
+        $user->avatar = $fileName;
         $user->save();
 
         return response()->json([

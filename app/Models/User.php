@@ -80,6 +80,28 @@ class User extends Authenticatable
     }
 
     /**
+     * URL avatar (signed B2 hoặc /storage cho local).
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (!$this->avatar) {
+            return null;
+        }
+        if (str_starts_with((string) $this->avatar, 'http')) {
+            return $this->avatar;
+        }
+        if (str_starts_with((string) $this->avatar, 'local:')) {
+            return url('/storage/' . substr($this->avatar, 6));
+        }
+        if (str_starts_with((string) $this->avatar, 'avatars/')) {
+            $endpoint = rtrim(config('filesystems.disks.backblaze.endpoint'), '/');
+            $bucket = config('filesystems.disks.backblaze.bucket');
+            return $endpoint . '/' . $bucket . '/' . $this->avatar;
+        }
+        return url('/storage/' . $this->avatar);
+    }
+
+    /**
      * Kiểm tra user đã mua sản phẩm chưa (đơn đã giao hoặc đã thanh toán xong).
      */
     public function hasPurchasedProduct(int $productId): bool

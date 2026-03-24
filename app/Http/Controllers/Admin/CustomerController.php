@@ -78,7 +78,7 @@ class CustomerController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'avatar' => $user->avatar,
+                'avatar' => $this->resolveAvatarUrl($user->avatar),
                 'orders_count' => $user->orders_count ?? 0,
                 'total_spent' => (float) ($user->orders_sum_total_amount ?? 0),
                 'total_spent_formatted' => number_format((float) ($user->orders_sum_total_amount ?? 0), 0),
@@ -132,7 +132,7 @@ class CustomerController extends Controller
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'phone' => $customer->phone,
-                'avatar' => $customer->avatar,
+                'avatar' => $this->resolveAvatarUrl($customer->avatar),
                 'date_of_birth' => $customer->date_of_birth?->format('Y-m-d'),
                 'gender' => $customer->gender,
                 'orders_count' => $customer->orders_count ?? 0,
@@ -142,6 +142,25 @@ class CustomerController extends Controller
             ],
             'recent_orders' => $recentOrders,
         ]);
+    }
+
+    private function resolveAvatarUrl(?string $avatar): ?string
+    {
+        if (!$avatar) {
+            return null;
+        }
+        if (str_starts_with($avatar, 'http')) {
+            return $avatar;
+        }
+        if (str_starts_with($avatar, 'local:')) {
+            return url('/storage/' . substr($avatar, 6));
+        }
+        if (str_starts_with($avatar, 'avatars/')) {
+            $endpoint = rtrim(config('filesystems.disks.backblaze.endpoint'), '/');
+            $bucket = config('filesystems.disks.backblaze.bucket');
+            return $endpoint . '/' . $bucket . '/' . $avatar;
+        }
+        return url('/storage/' . $avatar);
     }
 
     private function statusLabel(string $status): string
