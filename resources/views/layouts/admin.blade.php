@@ -64,6 +64,10 @@
                         <span class="material-symbols-outlined {{ $currentRoute === 'admin.orders' ? 'fill-1' : 'text-[#4c739a]' }}" style="font-variation-settings: 'FILL' {{ $currentRoute === 'admin.orders' ? 1 : 0 }}">shopping_bag</span>
                         <p class="text-sm {{ $currentRoute === 'admin.orders' ? 'font-bold' : 'font-semibold' }}">Đơn Hàng</p>
                     </a>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.promo-codes' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.promo-codes') }}">
+                        <span class="material-symbols-outlined {{ $currentRoute === 'admin.promo-codes' ? 'fill-1' : 'text-[#4c739a]' }}">sell</span>
+                        <p class="text-sm {{ $currentRoute === 'admin.promo-codes' ? 'font-bold' : 'font-semibold' }}">Mã Giảm Giá</p>
+                    </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ str_starts_with($currentRoute ?? '', 'admin.customers') ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.customers') }}">
                         <span class="material-symbols-outlined {{ str_starts_with($currentRoute ?? '', 'admin.customers') ? 'fill-1' : 'text-[#4c739a]' }}">group</span>
                         <p class="text-sm {{ str_starts_with($currentRoute ?? '', 'admin.customers') ? 'font-bold' : 'font-semibold' }}">Khách Hàng</p>

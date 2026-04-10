@@ -10,6 +10,8 @@ use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\Product;
 use App\Models\ProductColor;
+use App\Models\PromoCode;
+use App\Models\UserPromoCode;
 use App\Models\LensOption;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -85,7 +87,7 @@ class OrderController extends Controller
         ]);
 
         // Có Bearer token → dùng user đăng nhập; không thì dùng user_id trong body (nếu có); còn lại guest.
-        $userId = auth()->id();
+        $userId = $request->user()?->id;
         if ($userId === null && $request->has('user_id')) {
             $userId = (int) $request->input('user_id');
         }
@@ -147,7 +149,11 @@ class OrderController extends Controller
             $subtotal += $row['unit_price'] * $row['quantity'];
         }
         $subtotal = round($subtotal, 2);
-        $discountAmount = $this->resolvePromoDiscount($validated['promo_code'] ?? null, $subtotal);
+        $productIds = array_values(array_unique(array_map(
+            fn (array $row): int => (int) $row['product_id'],
+            $orderItemsData
+        )));
+        $discountAmount = $this->resolvePromoDiscount($validated['promo_code'] ?? null, $subtotal, $productIds, $userId);
         $shippingAmount = 0; // Có thể tính theo địa chỉ / quy tắc
         $taxAmount = 0;
         $totalAmount = round($subtotal - $discountAmount + $shippingAmount + $taxAmount, 2);
@@ -204,6 +210,28 @@ class OrderController extends Controller
                     : 'Đơn hàng đã được tạo.',
                 'created_by' => $userId,
             ]);
+
+            if (! empty($validated['promo_code']) && $discountAmount > 0) {
+                $normalizedCode = strtoupper(trim((string) $validated['promo_code']));
+                $promo = PromoCode::query()
+                    ->whereRaw('UPPER(code) = ?', [$normalizedCode])
+                    ->first();
+
+                if ($promo) {
+                    $promo->increment('used_count');
+
+                    if ($userId) {
+                        UserPromoCode::query()
+                            ->where('user_id', $userId)
+                            ->where('promo_code_id', $promo->id)
+                            ->whereNull('used_at')
+                            ->update([
+                                'used_at' => now(),
+                                'order_id' => $order->id,
+                            ]);
+                    }
+                }
+            }
 
             if ($userId && ! empty($validated['cart_item_ids'])) {
                 CartItem::query()
@@ -372,15 +400,29 @@ class OrderController extends Controller
         $request->validate([
             'code' => 'required|string|max:64',
             'subtotal' => 'nullable|numeric|min:0',
+            'product_ids' => 'nullable|array',
+            'product_ids.*' => 'integer|exists:products,id',
         ]);
 
         $subtotal = (float) ($request->input('subtotal', 0));
-        // TODO: khi có bảng promo_codes thì check code và tính discount
+        $productIds = array_values(array_unique(array_map(
+            fn ($id): int => (int) $id,
+            $request->input('product_ids', [])
+        )));
+        $discount = $this->resolvePromoDiscount(
+            $request->input('code'),
+            $subtotal,
+            $productIds,
+            $request->user()?->id
+        );
+
         return response()->json([
             'data' => [
-                'valid' => false,
-                'message' => 'Mã giảm giá không tồn tại hoặc đã hết hạn.',
-                'discount_amount' => 0,
+                'valid' => $discount > 0,
+                'message' => $discount > 0
+                    ? 'Mã giảm giá hợp lệ.'
+                    : 'Mã giảm giá không hợp lệ cho đơn hàng hiện tại.',
+                'discount_amount' => $discount,
                 'code' => $request->input('code'),
             ],
         ]);
@@ -404,13 +446,63 @@ class OrderController extends Controller
         return round($price, 2);
     }
 
-    private function resolvePromoDiscount(?string $promoCode, float $subtotal): float
+    private function resolvePromoDiscount(?string $promoCode, float $subtotal, array $productIds = [], ?int $userId = null): float
     {
         if (empty($promoCode)) {
             return 0;
         }
-        // TODO: khi có bảng promo_codes
-        return 0;
+
+        $normalizedCode = strtoupper(trim($promoCode));
+        if ($normalizedCode === '') {
+            return 0;
+        }
+
+        $promo = PromoCode::query()
+            ->whereRaw('UPPER(code) = ?', [$normalizedCode])
+            ->first();
+
+        if (! $promo || ! $promo->isAvailable()) {
+            return 0;
+        }
+
+        // Kiểu Shopee: user phải claim voucher trước khi dùng.
+        if ($userId) {
+            $claimed = UserPromoCode::query()
+                ->where('user_id', $userId)
+                ->where('promo_code_id', $promo->id)
+                ->whereNull('used_at')
+                ->exists();
+            if (! $claimed) {
+                return 0;
+            }
+        }
+
+        if ($subtotal < (float) $promo->min_order_amount) {
+            return 0;
+        }
+
+        if (
+            $promo->scope === PromoCode::SCOPE_PRODUCT
+            && (
+                ! $promo->product_id
+                || ! in_array((int) $promo->product_id, $productIds, true)
+            )
+        ) {
+            return 0;
+        }
+
+        $discount = 0.0;
+        if ($promo->discount_type === PromoCode::TYPE_PERCENT) {
+            $discount = $subtotal * ((float) $promo->discount_value / 100);
+        } else {
+            $discount = (float) $promo->discount_value;
+        }
+
+        if ($promo->max_discount_amount !== null) {
+            $discount = min($discount, (float) $promo->max_discount_amount);
+        }
+
+        return max(0, min(round($discount, 2), $subtotal));
     }
 
     private function getProductPrimaryImageUrl(Product $product): ?string

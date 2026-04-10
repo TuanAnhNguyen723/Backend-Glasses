@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
@@ -149,9 +152,14 @@ class OrderController extends Controller
             'status' => 'required|string|in:' . implode(',', Order::validStatuses()),
         ]);
 
-        $order = Order::findOrFail($id);
+        $order = Order::with('items')->findOrFail($id);
         $oldStatus = $order->status;
         $newStatus = $request->input('status');
+
+        // Trừ tồn kho đúng một lần tại mốc giao hàng thành công.
+        if ($oldStatus !== Order::STATUS_DELIVERED && $newStatus === Order::STATUS_DELIVERED) {
+            $this->decreaseStockForDeliveredOrder($order);
+        }
 
         $order->status = $newStatus;
         if ($newStatus === Order::STATUS_DELIVERED && ! $order->delivered_at) {
@@ -179,6 +187,37 @@ class OrderController extends Controller
                 'status_class' => $statusDisplay['class'],
             ],
         ]);
+    }
+
+    /**
+     * Trừ tồn kho product theo số lượng đã mua khi đơn được giao thành công.
+     */
+    private function decreaseStockForDeliveredOrder(Order $order): void
+    {
+        DB::transaction(function () use ($order) {
+            foreach ($order->items as $item) {
+                $product = Product::query()
+                    ->where('id', $item->product_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $product) {
+                    throw ValidationException::withMessages([
+                        'status' => "Không tìm thấy sản phẩm #{$item->product_id} để trừ tồn kho.",
+                    ]);
+                }
+
+                $newStock = (int) $product->stock_quantity - (int) $item->quantity;
+                if ($newStock < 0) {
+                    throw ValidationException::withMessages([
+                        'status' => "Tồn kho không đủ cho sản phẩm {$product->name}.",
+                    ]);
+                }
+
+                $product->stock_quantity = $newStock;
+                $product->save();
+            }
+        });
     }
 
     private function statusDisplay(string $status): array

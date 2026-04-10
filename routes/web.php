@@ -43,6 +43,15 @@ Route::prefix('admin')->group(function () {
     Route::get('/api/orders/status-options', [\App\Http\Controllers\Admin\OrderController::class, 'getStatusOptions'])->name('admin.api.orders.status-options');
     Route::put('/api/orders/{id}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])->name('admin.api.orders.update-status');
 
+    // Promo Code Management Routes
+    Route::get('/promo-codes', [\App\Http\Controllers\Admin\PromoCodeController::class, 'index'])->name('admin.promo-codes');
+    Route::get('/api/promo-codes', [\App\Http\Controllers\Admin\PromoCodeController::class, 'getPromoCodes'])->name('admin.api.promo-codes');
+    Route::post('/api/promo-codes', [\App\Http\Controllers\Admin\PromoCodeController::class, 'store'])->name('admin.api.promo-codes.store');
+    Route::put('/api/promo-codes/{id}', [\App\Http\Controllers\Admin\PromoCodeController::class, 'update'])->name('admin.api.promo-codes.update');
+    Route::post('/api/promo-codes/{id}/toggle-status', [\App\Http\Controllers\Admin\PromoCodeController::class, 'toggleStatus'])->name('admin.api.promo-codes.toggle-status');
+    Route::delete('/api/promo-codes/{id}', [\App\Http\Controllers\Admin\PromoCodeController::class, 'destroy'])->name('admin.api.promo-codes.destroy');
+    Route::get('/api/promo-codes/products/options', [\App\Http\Controllers\Admin\PromoCodeController::class, 'getProducts'])->name('admin.api.promo-codes.products');
+
     // Customer Management Routes
     Route::get('/customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('admin.customers');
     Route::get('/customers/{id}', [\App\Http\Controllers\Admin\CustomerController::class, 'show'])->name('admin.customers.show');

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PromoCodeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PrescriptionController;
 use App\Http\Controllers\Api\ReviewController;
@@ -71,4 +72,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     
     // Promo Codes
     Route::post('/promo-codes/validate', [OrderController::class, 'validatePromoCode']);
+    Route::get('/promo-codes/available', [PromoCodeController::class, 'available']);
+    Route::post('/promo-codes/{id}/claim', [PromoCodeController::class, 'claim']);
+    Route::get('/promo-codes/my-vouchers', [PromoCodeController::class, 'myVouchers']);
 });
