@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\PromoCodeController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PrescriptionController;
 use App\Http\Controllers\Api\ReviewController;
+use App\Http\Controllers\Api\AiRecommendationController;
 
 // Public routes
 Route::prefix('v1')->group(function () {
@@ -31,6 +32,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     // Guest: ghi nhận thanh toán sau redirect Momo/VNPay (xác thực bằng order_number + shipping_email)
     Route::post('/orders/confirm-payment-guest', [OrderController::class, 'recordPaymentGuest']);
+    Route::post('/ai/recommend-products', [AiRecommendationController::class, 'recommend'])->middleware('throttle:20,1');
 });
 
 // Protected routes (cần đăng nhập)
