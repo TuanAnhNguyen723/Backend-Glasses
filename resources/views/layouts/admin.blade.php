@@ -58,7 +58,7 @@
                     </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.products' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.products') }}">
                         <span class="material-symbols-outlined {{ $currentRoute === 'admin.products' ? 'fill-1' : 'text-[#4c739a]' }}">inventory_2</span>
-                        <p class="text-sm {{ $currentRoute === 'admin.products' ? 'font-bold' : 'font-semibold' }}">Kho Hàng</p>
+                        <p class="text-sm {{ $currentRoute === 'admin.products' ? 'font-bold' : 'font-semibold' }}">Quản Lý Sản Phẩm</p>
                     </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.orders' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.orders') }}">
                         <span class="material-symbols-outlined {{ $currentRoute === 'admin.orders' ? 'fill-1' : 'text-[#4c739a]' }}" style="font-variation-settings: 'FILL' {{ $currentRoute === 'admin.orders' ? 1 : 0 }}">shopping_bag</span>
@@ -72,9 +72,9 @@
                         <span class="material-symbols-outlined {{ str_starts_with($currentRoute ?? '', 'admin.customers') ? 'fill-1' : 'text-[#4c739a]' }}">group</span>
                         <p class="text-sm {{ str_starts_with($currentRoute ?? '', 'admin.customers') ? 'font-bold' : 'font-semibold' }}">Khách Hàng</p>
                     </a>
-                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors" href="#">
-                        <span class="material-symbols-outlined text-[#4c739a]">analytics</span>
-                        <p class="text-sm font-semibold">Báo Cáo</p>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.reviews' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.reviews') }}">
+                        <span class="material-symbols-outlined {{ $currentRoute === 'admin.reviews' ? 'fill-1' : 'text-[#4c739a]' }}">forum</span>
+                        <p class="text-sm {{ $currentRoute === 'admin.reviews' ? 'font-bold' : 'font-semibold' }}">Bình Luận</p>
                     </a>
                     <div class="my-4 border-t border-[#cfdbe7] dark:border-slate-800"></div>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors" href="#">

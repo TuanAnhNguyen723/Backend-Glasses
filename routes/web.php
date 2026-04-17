@@ -57,4 +57,11 @@ Route::prefix('admin')->group(function () {
     Route::get('/customers/{id}', [\App\Http\Controllers\Admin\CustomerController::class, 'show'])->name('admin.customers.show');
     Route::get('/api/customers', [\App\Http\Controllers\Admin\CustomerController::class, 'getCustomers'])->name('admin.api.customers');
     Route::get('/api/customers/{id}', [\App\Http\Controllers\Admin\CustomerController::class, 'getCustomerDetail'])->name('admin.api.customers.detail');
+
+    // Review Management Routes
+    Route::get('/reviews', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('admin.reviews');
+    Route::get('/api/reviews', [\App\Http\Controllers\Admin\ReviewController::class, 'getReviews'])->name('admin.api.reviews');
+    Route::put('/api/reviews/{id}/approval', [\App\Http\Controllers\Admin\ReviewController::class, 'toggleApproval'])->name('admin.api.reviews.approval');
+    Route::post('/api/reviews/{id}/reply', [\App\Http\Controllers\Admin\ReviewController::class, 'reply'])->name('admin.api.reviews.reply');
+    Route::put('/api/replies/{id}', [\App\Http\Controllers\Admin\ReviewController::class, 'updateReply'])->name('admin.api.replies.update');
 });

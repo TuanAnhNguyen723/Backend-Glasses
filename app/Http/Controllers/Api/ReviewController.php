@@ -24,7 +24,7 @@ class ReviewController extends Controller
         $perPage = min((int) $request->get('per_page', 15), 50);
         $reviews = Review::where('product_id', $productId)
             ->where('is_approved', true)
-            ->with('user:id,name,avatar')
+            ->with(['user:id,name,avatar', 'replies.user:id,name'])
             ->orderByDesc('created_at')
             ->paginate($perPage);
 
@@ -55,7 +55,7 @@ class ReviewController extends Controller
 
         $review = Review::where('product_id', $productId)
             ->where('user_id', $request->user()->id)
-            ->with('user:id,name,avatar')
+            ->with(['user:id,name,avatar', 'replies.user:id,name'])
             ->first();
 
         return response()->json([
@@ -106,7 +106,7 @@ class ReviewController extends Controller
 
         return response()->json([
             'message' => 'Đánh giá đã được gửi thành công.',
-            'review' => new ReviewResource($review->load('user:id,name,avatar')),
+            'review' => new ReviewResource($review->load(['user:id,name,avatar', 'replies.user:id,name'])),
         ], 201);
     }
 
@@ -141,7 +141,7 @@ class ReviewController extends Controller
 
         return response()->json([
             'message' => 'Đánh giá đã được cập nhật.',
-            'review' => new ReviewResource($review->load('user:id,name,avatar')),
+            'review' => new ReviewResource($review->load(['user:id,name,avatar', 'replies.user:id,name'])),
         ]);
     }
 

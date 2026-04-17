@@ -13,6 +13,16 @@
         .tab-content:not(.hidden) {
             display: block !important;
         }
+        .field-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 1px #ef4444 !important;
+        }
+        .field-error-message {
+            color: #ef4444;
+            font-size: 0.75rem;
+            margin-top: 0.375rem;
+            font-weight: 600;
+        }
     </style>
 @endpush
 
@@ -124,12 +134,6 @@
                                         Tồn Kho <span class="text-red-500">*</span>
                                     </label>
                                     <input id="product-stock" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3" placeholder="0" type="number" min="0" required/>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
-                                        Ngưỡng Cảnh Báo
-                                    </label>
-                                    <input id="low-stock-threshold" class="w-full rounded-lg border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#0d141b] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm py-2 px-3" placeholder="10" type="number" min="0"/>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-[#4c739a] dark:text-slate-300 mb-1.5">
@@ -273,6 +277,30 @@
         let primaryImageIndex = 0;
         let lastPickedColor = '#000000';
         let lensOptionRowId = 0;
+        const fieldMap = {
+            name: '#product-name',
+            sku: '#product-sku',
+            base_price: '#product-price',
+            compare_price: '#product-compare-price',
+            stock_quantity: '#product-stock',
+            category_id: '#product-category',
+            frame_shape: '#frame-shape',
+            material: '#product-material',
+            badge: '#product-badge',
+            description: '#product-description',
+        };
+        const fieldTabMap = {
+            name: 'basic',
+            sku: 'basic',
+            base_price: 'basic',
+            compare_price: 'basic',
+            stock_quantity: 'basic',
+            category_id: 'basic',
+            material: 'basic',
+            badge: 'basic',
+            frame_shape: 'specs',
+            description: 'description',
+        };
         const productId = __BOOTSTRAP__.productId;
         const productData = __BOOTSTRAP__.product;
         const productImagesData = __BOOTSTRAP__.productImages;
@@ -283,6 +311,54 @@
         
         // DOM elements - will be initialized on DOMContentLoaded
         let gallery, galleryGrid, uploadArea, fileInput;
+
+        function clearFieldErrors() {
+            document.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error'));
+            document.querySelectorAll('.field-error-message').forEach(el => el.remove());
+        }
+
+        function showFieldError(field, message) {
+            const selector = fieldMap[field];
+            if (!selector) return false;
+            const input = document.querySelector(selector);
+            if (!input) return false;
+
+            input.classList.add('field-error');
+            const errorEl = document.createElement('p');
+            errorEl.className = 'field-error-message';
+            errorEl.textContent = message;
+            input.insertAdjacentElement('afterend', errorEl);
+            return true;
+        }
+
+        function switchToTab(tabName) {
+            const tabButton = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+            if (tabButton) tabButton.click();
+        }
+
+        function showValidationErrors(errors) {
+            clearFieldErrors();
+            const entries = Object.entries(errors || {});
+            if (entries.length === 0) return;
+
+            let firstField = null;
+            entries.forEach(([field, messages]) => {
+                const firstMessage = Array.isArray(messages) ? messages[0] : messages;
+                const displayed = showFieldError(field, firstMessage);
+                if (!firstField && displayed) firstField = field;
+            });
+
+            if (firstField) {
+                const tabName = fieldTabMap[firstField];
+                if (tabName) switchToTab(tabName);
+                const selector = fieldMap[firstField];
+                const firstInput = selector ? document.querySelector(selector) : null;
+                if (firstInput) {
+                    firstInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstInput.focus();
+                }
+            }
+        }
 
         // Tab Navigation
         function initTabs() {
@@ -338,7 +414,6 @@
             const priceEl = document.getElementById('product-price');
             const comparePriceEl = document.getElementById('product-compare-price');
             const stockEl = document.getElementById('product-stock');
-            const thresholdEl = document.getElementById('low-stock-threshold');
             const categoryEl = document.getElementById('product-category');
             const materialEl = document.getElementById('product-material');
             const badgeEl = document.getElementById('product-badge');
@@ -351,7 +426,6 @@
             if (priceEl) priceEl.value = productData.base_price || '';
             if (comparePriceEl) comparePriceEl.value = productData.compare_price || '';
             if (stockEl) stockEl.value = productData.stock_quantity || '';
-            if (thresholdEl) thresholdEl.value = productData.low_stock_threshold || '';
             if (frameShapeEl) frameShapeEl.value = productData.frame_shape || '';
             if (materialEl) materialEl.value = productData.material || '';
             if (badgeEl) badgeEl.value = productData.badge || '';
@@ -611,6 +685,7 @@
         // Update product
         document.getElementById('save-product-btn').addEventListener('click', async function() {
             const formData = new FormData();
+            clearFieldErrors();
             
             // Validate required fields
             const name = document.getElementById('product-name').value.trim();
@@ -620,8 +695,16 @@
             const category = document.getElementById('product-category').value;
             const frameShape = document.getElementById('frame-shape').value;
             
-            if (!name || !sku || !price || !stock || !category || !frameShape) {
-                notificationManager.error('Vui lòng điền đầy đủ các trường bắt buộc', 'Lỗi xác thực');
+            const clientErrors = {};
+            if (!name) clientErrors.name = ['Bạn chưa nhập tên sản phẩm'];
+            if (!sku) clientErrors.sku = ['Bạn chưa nhập SKU'];
+            if (!price) clientErrors.base_price = ['Bạn chưa nhập giá sản phẩm'];
+            if (!stock) clientErrors.stock_quantity = ['Bạn chưa nhập tồn kho'];
+            if (!category) clientErrors.category_id = ['Bạn chưa chọn danh mục'];
+            if (!frameShape) clientErrors.frame_shape = ['Bạn chưa chọn hình dạng khung'];
+            if (Object.keys(clientErrors).length > 0) {
+                showValidationErrors(clientErrors);
+                notificationManager.error('Vui lòng kiểm tra các trường đang báo đỏ', 'Lỗi xác thực');
                 return;
             }
             
@@ -631,7 +714,6 @@
             formData.append('base_price', price);
             formData.append('compare_price', document.getElementById('product-compare-price').value || '');
             formData.append('stock_quantity', stock);
-            formData.append('low_stock_threshold', document.getElementById('low-stock-threshold').value || 10);
             formData.append('category_id', category);
             formData.append('frame_shape', frameShape);
             formData.append('material', document.getElementById('product-material').value);
@@ -710,8 +792,8 @@
                     }, 1500);
                 } else {
                     if (data.errors) {
-                        const errorMessages = Object.values(data.errors).flat().join(', ');
-                        notificationManager.error(errorMessages, 'Lỗi xác thực');
+                        showValidationErrors(data.errors);
+                        notificationManager.error('Vui lòng kiểm tra các trường đang báo đỏ', 'Lỗi xác thực');
                     } else {
                         notificationManager.error(data.message || 'Không thể cập nhật sản phẩm', 'Lỗi');
                     }
