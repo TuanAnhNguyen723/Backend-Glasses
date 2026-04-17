@@ -77,9 +77,9 @@
                         <p class="text-sm {{ $currentRoute === 'admin.reviews' ? 'font-bold' : 'font-semibold' }}">Bình Luận</p>
                     </a>
                     <div class="my-4 border-t border-[#cfdbe7] dark:border-slate-800"></div>
-                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors" href="#">
-                        <span class="material-symbols-outlined text-[#4c739a]">settings</span>
-                        <p class="text-sm font-semibold">Cài Đặt</p>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.settings' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.settings') }}">
+                        <span class="material-symbols-outlined {{ $currentRoute === 'admin.settings' ? 'fill-1' : 'text-[#4c739a]' }}">settings</span>
+                        <p class="text-sm {{ $currentRoute === 'admin.settings' ? 'font-bold' : 'font-semibold' }}">Cài Đặt</p>
                     </a>
                 </nav>
                 <!-- User Account / Logout -->

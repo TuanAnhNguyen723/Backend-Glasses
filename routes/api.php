@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PrescriptionController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\AiRecommendationController;
+use App\Http\Controllers\Api\SettingController;
 
 // Public routes
 Route::prefix('v1')->group(function () {
@@ -27,6 +28,7 @@ Route::prefix('v1')->group(function () {
     
     // Reviews
     Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
+    Route::get('/settings/general', [SettingController::class, 'general']);
 
     // Guest: tạo đơn không cần đăng nhập
     Route::post('/orders', [OrderController::class, 'store']);

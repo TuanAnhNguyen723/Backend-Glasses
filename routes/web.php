@@ -64,4 +64,9 @@ Route::prefix('admin')->group(function () {
     Route::put('/api/reviews/{id}/approval', [\App\Http\Controllers\Admin\ReviewController::class, 'toggleApproval'])->name('admin.api.reviews.approval');
     Route::post('/api/reviews/{id}/reply', [\App\Http\Controllers\Admin\ReviewController::class, 'reply'])->name('admin.api.reviews.reply');
     Route::put('/api/replies/{id}', [\App\Http\Controllers\Admin\ReviewController::class, 'updateReply'])->name('admin.api.replies.update');
+
+    // General Settings
+    Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('admin.settings');
+    Route::get('/api/settings/general', [\App\Http\Controllers\Admin\SettingController::class, 'getGeneralSettings'])->name('admin.api.settings.general');
+    Route::put('/api/settings/general', [\App\Http\Controllers\Admin\SettingController::class, 'updateGeneralSettings'])->name('admin.api.settings.general.update');
 });
