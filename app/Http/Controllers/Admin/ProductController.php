@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Brand;
 use App\Models\ProductColor;
 use App\Models\LensOption;
+use App\Models\OrderItem;
 use App\Jobs\UploadProductImagesJob;
 use App\Models\ProductImage;
 use Illuminate\Http\Request;
@@ -866,46 +867,15 @@ class ProductController extends Controller
     {
         try {
             $product = Product::findOrFail($id);
-            
-            // Xóa tất cả hình ảnh của sản phẩm từ Backblaze
-            foreach ($product->images as $image) {
-                try {
-                    // Use image_path if available, otherwise try to extract from image_url
-                    $path = $image->image_path;
-                    
-                    if (empty($path)) {
-                        // Fallback: try to extract path from URL
-                        $imageUrl = $image->image_url;
-                        if (strpos($imageUrl, 'http') === 0) {
-                            $parsedUrl = parse_url($imageUrl);
-                            $path = ltrim($parsedUrl['path'] ?? '', '/');
-                            
-                            // Remove bucket name from path if present
-                            $bucketName = env('AWS_BUCKET');
-                            if (strpos($path, $bucketName . '/') === 0) {
-                                $path = substr($path, strlen($bucketName) + 1);
-                            }
-                        } else {
-                            $path = $imageUrl;
-                        }
-                    }
-                    
-                    // Delete from Backblaze
-                    if (!empty($path)) {
-                        Storage::disk('backblaze')->delete($path);
-                    }
-                } catch (\Exception $e) {
-                    // Log error but continue deletion
-                    Log::warning('Failed to delete image from Backblaze: ' . $e->getMessage());
-                }
-                $image->delete();
+
+            // Chỉ chặn xóa nếu còn đơn liên quan chưa ở trạng thái delivered/cancelled.
+            if ($this->hasBlockingOrdersForProduct($product->id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể xóa sản phẩm này vì còn đơn hàng chưa hoàn tất hoặc chưa hủy.',
+                ], 409);
             }
-            
-            // Xóa màu sắc
-            $product->colors()->delete();
-            
-            // Xóa sản phẩm
-            $product->delete();
+            $this->deleteProductWithAssets($product);
             
             return response()->json([
                 'success' => true,
@@ -917,6 +887,83 @@ class ProductController extends Controller
                 'message' => 'Lỗi khi xóa sản phẩm: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'product_ids' => 'required|array|min:1',
+            'product_ids.*' => 'integer|distinct|exists:products,id',
+        ]);
+
+        $products = Product::query()
+            ->whereIn('id', $validated['product_ids'])
+            ->get()
+            ->keyBy('id');
+
+        $deletedIds = [];
+        $failed = [];
+
+        foreach ($validated['product_ids'] as $productId) {
+            $product = $products->get($productId);
+            if (! $product) {
+                $failed[] = [
+                    'id' => $productId,
+                    'message' => 'Không tìm thấy sản phẩm.',
+                ];
+                continue;
+            }
+
+            if ($this->hasBlockingOrdersForProduct($product->id)) {
+                $failed[] = [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'message' => 'Còn đơn hàng chưa hoàn tất hoặc chưa hủy.',
+                ];
+                continue;
+            }
+
+            try {
+                $this->deleteProductWithAssets($product);
+                $deletedIds[] = $product->id;
+            } catch (\Throwable $e) {
+                Log::error('Bulk delete product failed', [
+                    'product_id' => $product->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $failed[] = [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'message' => 'Xóa thất bại, vui lòng thử lại.',
+                ];
+            }
+        }
+
+        $deletedCount = count($deletedIds);
+        $failedCount = count($failed);
+
+        if ($deletedCount > 0 && $failedCount === 0) {
+            $statusCode = 200;
+            $success = true;
+            $message = 'Đã xóa tất cả sản phẩm đã chọn.';
+        } elseif ($deletedCount > 0 && $failedCount > 0) {
+            $statusCode = 200;
+            $success = true;
+            $message = 'Đã xóa một phần sản phẩm đã chọn.';
+        } else {
+            $statusCode = 409;
+            $success = false;
+            $message = 'Không thể xóa các sản phẩm đã chọn.';
+        }
+
+        return response()->json([
+            'success' => $success,
+            'message' => $message,
+            'deleted_count' => count($deletedIds),
+            'failed_count' => count($failed),
+            'deleted_ids' => $deletedIds,
+            'failed_items' => $failed,
+        ], $statusCode);
     }
 
     /**
@@ -965,5 +1012,48 @@ class ProductController extends Controller
             $bucket = env('AWS_BUCKET', 'Glasses');
             return rtrim($endpoint, '/') . '/' . $bucket . '/' . $path;
         }
+    }
+
+    private function deleteProductWithAssets(Product $product): void
+    {
+        foreach ($product->images as $image) {
+            try {
+                $path = $image->image_path;
+
+                if (empty($path)) {
+                    $imageUrl = $image->image_url;
+                    if (strpos($imageUrl, 'http') === 0) {
+                        $parsedUrl = parse_url($imageUrl);
+                        $path = ltrim($parsedUrl['path'] ?? '', '/');
+                        $bucketName = env('AWS_BUCKET');
+                        if (strpos($path, $bucketName . '/') === 0) {
+                            $path = substr($path, strlen($bucketName) + 1);
+                        }
+                    } else {
+                        $path = $imageUrl;
+                    }
+                }
+
+                if (! empty($path)) {
+                    Storage::disk('backblaze')->delete($path);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to delete image from Backblaze: ' . $e->getMessage());
+            }
+            $image->delete();
+        }
+
+        $product->colors()->delete();
+        $product->delete();
+    }
+
+    private function hasBlockingOrdersForProduct(int $productId): bool
+    {
+        return OrderItem::query()
+            ->where('product_id', $productId)
+            ->whereHas('order', function ($query) {
+                $query->whereNotIn('status', ['delivered', 'cancelled']);
+            })
+            ->exists();
     }
 }

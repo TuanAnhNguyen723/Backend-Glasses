@@ -22,6 +22,7 @@ Route::prefix('admin')->group(function () {
     Route::post('/api/products', [\App\Http\Controllers\Admin\ProductController::class, 'store'])->name('admin.api.products.store');
     Route::put('/api/products/{id}', [\App\Http\Controllers\Admin\ProductController::class, 'update'])->name('admin.api.products.update');
     Route::put('/api/products/{id}/featured', [\App\Http\Controllers\Admin\ProductController::class, 'toggleFeatured'])->name('admin.api.products.featured');
+    Route::delete('/api/products/bulk-delete', [\App\Http\Controllers\Admin\ProductController::class, 'bulkDestroy'])->name('admin.api.products.bulk-destroy');
     Route::delete('/api/products/{id}', [\App\Http\Controllers\Admin\ProductController::class, 'destroy'])->name('admin.api.products.destroy');
     Route::get('/api/products/filters', [\App\Http\Controllers\Admin\ProductController::class, 'getFilters'])->name('admin.api.products.filters');
     Route::get('/api/products/stats', [\App\Http\Controllers\Admin\ProductController::class, 'getStats'])->name('admin.api.products.stats');
@@ -42,6 +43,8 @@ Route::prefix('admin')->group(function () {
     Route::get('/api/orders', [\App\Http\Controllers\Admin\OrderController::class, 'getOrders'])->name('admin.api.orders');
     Route::get('/api/orders/status-options', [\App\Http\Controllers\Admin\OrderController::class, 'getStatusOptions'])->name('admin.api.orders.status-options');
     Route::put('/api/orders/{id}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])->name('admin.api.orders.update-status');
+    Route::delete('/api/orders/bulk-delete', [\App\Http\Controllers\Admin\OrderController::class, 'bulkDestroy'])->name('admin.api.orders.bulk-destroy');
+    Route::delete('/api/orders/{id}', [\App\Http\Controllers\Admin\OrderController::class, 'destroy'])->name('admin.api.orders.destroy');
 
     // Promo Code Management Routes
     Route::get('/promo-codes', [\App\Http\Controllers\Admin\PromoCodeController::class, 'index'])->name('admin.promo-codes');

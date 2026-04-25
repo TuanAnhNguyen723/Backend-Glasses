@@ -52,7 +52,7 @@ class Order extends Model
         'order_number', 'user_id', 'status', 'subtotal', 'tax_amount',
         'shipping_amount', 'discount_amount', 'total_amount', 'promo_code',
         'shipping_name', 'shipping_phone', 'shipping_email',
-        'shipping_address', 'shipping_city', 'shipping_postal_code',
+        'shipping_address', 'shipping_city', 'shipping_ward', 'shipping_postal_code',
         'shipping_country', 'tracking_number', 'estimated_delivery_date',
         'delivered_at', 'notes',
         'payment_status', 'payment_method', 'payment_reference', 'paid_at',

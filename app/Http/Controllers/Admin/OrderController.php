@@ -15,6 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
+    private const DELETABLE_STATUSES = [
+        Order::STATUS_DELIVERED,
+        Order::STATUS_CANCELLED,
+    ];
     /**
      * Trang quản lý đơn hàng (chỉ view).
      */
@@ -85,14 +89,17 @@ class OrderController extends Controller
             $productImageUrl = null;
             if ($firstItem && $firstItem->product && $firstItem->product->primaryImage) {
                 $primary = $firstItem->product->primaryImage;
-                if (! empty($primary->image_url)) {
-                    $productImageUrl = $primary->image_url;
-                } elseif (! empty($primary->image_path)) {
+                // Ưu tiên image_path để luôn tạo được signed URL mới (tránh URL cũ hết hạn).
+                if (! empty($primary->image_path)) {
                     try {
                         $productImageUrl = Storage::disk('backblaze')->temporaryUrl($primary->image_path, now()->addWeek());
                     } catch (\Throwable $e) {
                         $productImageUrl = null;
                     }
+                }
+                // Fallback khi không có image_path (ảnh public hoặc dữ liệu cũ).
+                if (! $productImageUrl && ! empty($primary->image_url)) {
+                    $productImageUrl = $primary->image_url;
                 }
             }
             // Fallback cuối: dùng url đã lưu (nếu có) cho trường hợp ảnh public.
@@ -110,6 +117,8 @@ class OrderController extends Controller
                 'customer_id' => $order->user_id,
                 'customer_name' => $customerName,
                 'customer_email' => $customerEmail,
+                'shipping_phone' => $order->shipping_phone,
+                'shipping_address' => $order->shipping_address,
                 'product_name' => $productName,
                 'product_image_url' => $productImageUrl,
                 'status' => $order->status,
@@ -189,6 +198,108 @@ class OrderController extends Controller
         ]);
     }
 
+    public function destroy(int $id): JsonResponse
+    {
+        $order = Order::findOrFail($id);
+
+        if (! $this->canDeleteOrder($order)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chỉ có thể xóa đơn hàng ở trạng thái đã giao hoặc đã hủy.',
+            ], 409);
+        }
+
+        DB::transaction(function () use ($order) {
+            $order->statusHistory()->delete();
+            $order->items()->delete();
+            $order->delete();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đơn hàng đã được xóa thành công.',
+        ]);
+    }
+
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array|min:1',
+            'order_ids.*' => 'integer|distinct|exists:orders,id',
+        ]);
+
+        $orders = Order::query()
+            ->whereIn('id', $validated['order_ids'])
+            ->get()
+            ->keyBy('id');
+
+        $deletedIds = [];
+        $failed = [];
+
+        foreach ($validated['order_ids'] as $orderId) {
+            $order = $orders->get($orderId);
+            if (! $order) {
+                $failed[] = [
+                    'id' => $orderId,
+                    'message' => 'Không tìm thấy đơn hàng.',
+                ];
+                continue;
+            }
+
+            if (! $this->canDeleteOrder($order)) {
+                $failed[] = [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => $order->status,
+                    'message' => 'Chỉ đơn đã giao hoặc đã hủy mới được xóa.',
+                ];
+                continue;
+            }
+
+            try {
+                DB::transaction(function () use ($order) {
+                    $order->statusHistory()->delete();
+                    $order->items()->delete();
+                    $order->delete();
+                });
+                $deletedIds[] = $order->id;
+            } catch (\Throwable $e) {
+                $failed[] = [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => $order->status,
+                    'message' => 'Xóa thất bại, vui lòng thử lại.',
+                ];
+            }
+        }
+
+        $deletedCount = count($deletedIds);
+        $failedCount = count($failed);
+
+        if ($deletedCount > 0 && $failedCount === 0) {
+            $statusCode = 200;
+            $success = true;
+            $message = 'Đã xóa tất cả đơn hàng đã chọn.';
+        } elseif ($deletedCount > 0 && $failedCount > 0) {
+            $statusCode = 200;
+            $success = true;
+            $message = 'Đã xóa một phần đơn hàng đã chọn.';
+        } else {
+            $statusCode = 409;
+            $success = false;
+            $message = 'Không thể xóa các đơn hàng đã chọn.';
+        }
+
+        return response()->json([
+            'success' => $success,
+            'message' => $message,
+            'deleted_count' => $deletedCount,
+            'failed_count' => $failedCount,
+            'deleted_ids' => $deletedIds,
+            'failed_items' => $failed,
+        ], $statusCode);
+    }
+
     /**
      * Trừ tồn kho product theo số lượng đã mua khi đơn được giao thành công.
      */
@@ -243,5 +354,10 @@ class OrderController extends Controller
             'failed' => ['label' => 'Failed', 'class' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'],
         ];
         return $map[$paymentStatus] ?? $map['pending'];
+    }
+
+    private function canDeleteOrder(Order $order): bool
+    {
+        return in_array($order->status, self::DELETABLE_STATUSES, true);
     }
 }

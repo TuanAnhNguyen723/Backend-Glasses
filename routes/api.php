@@ -35,6 +35,7 @@ Route::prefix('v1')->group(function () {
     // Guest: ghi nhận thanh toán sau redirect Momo/VNPay (xác thực bằng order_number + shipping_email)
     Route::post('/orders/confirm-payment-guest', [OrderController::class, 'recordPaymentGuest']);
     Route::post('/ai/recommend-products', [AiRecommendationController::class, 'recommend'])->middleware('throttle:20,1');
+
 });
 
 // Protected routes (cần đăng nhập)
@@ -80,3 +81,4 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/promo-codes/{id}/claim', [PromoCodeController::class, 'claim']);
     Route::get('/promo-codes/my-vouchers', [PromoCodeController::class, 'myVouchers']);
 });
+

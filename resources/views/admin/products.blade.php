@@ -9,10 +9,6 @@
             <p class="text-[#4c739a] text-sm font-medium">Cấu hình và theo dõi kho hàng kính mắt của bạn.</p>
         </div>
         <div class="flex items-center gap-3">
-            <button class="flex items-center gap-2 h-10 px-4 rounded-xl border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-[#0d141b] dark:text-white hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors">
-                <span class="material-symbols-outlined text-lg">file_download</span>
-                Xuất File
-            </button>
             <a href="{{ route('admin.products.create') }}" class="flex items-center gap-2 h-10 px-5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
                 <span class="material-symbols-outlined text-lg">add</span>
                 Thêm Sản Phẩm Mới
@@ -120,12 +116,26 @@
             </div>
         </div>
     </div>
+    <div id="bulk-actions-bar" class="hidden items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/30 dark:bg-red-500/10">
+        <span id="bulk-selected-count" class="text-sm font-semibold text-red-700 dark:text-red-300">Đã chọn 0 sản phẩm</span>
+        <div class="flex items-center gap-2">
+            <button id="clear-selection-btn" class="h-9 rounded-lg border border-[#cfdbe7] bg-white px-3 text-sm font-semibold text-[#0d141b] hover:bg-[#f6f7f8] dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800">
+                Bỏ chọn
+            </button>
+            <button id="bulk-delete-btn" class="h-9 rounded-lg bg-red-500 px-3 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50" disabled>
+                Xóa đã chọn
+            </button>
+        </div>
+    </div>
     <!-- Products Table -->
     <div class="bg-white dark:bg-slate-900 rounded-2xl border border-[#cfdbe7] dark:border-slate-800 shadow-sm overflow-hidden">
         <div class="overflow-x-auto @container">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-[#f6f7f8]/50 dark:bg-slate-800/50 border-b border-[#cfdbe7] dark:border-slate-800">
+                        <th class="px-4 py-4 text-center">
+                            <input id="select-all-products" type="checkbox" class="size-4 rounded border-[#cfdbe7] text-primary focus:ring-primary/40">
+                        </th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Sản Phẩm</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Danh Mục</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Khung</th>
@@ -139,7 +149,7 @@
                 </thead>
                 <tbody id="products-table-body" class="divide-y divide-[#cfdbe7] dark:divide-slate-800">
                     <tr>
-                        <td colspan="9" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td>
+                        <td colspan="10" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td>
                     </tr>
                 </tbody>
             </table>
@@ -198,6 +208,8 @@
 
         // State
         let currentPage = 1;
+        let selectedProductIds = new Set();
+        let currentPageProductIds = [];
         let filters = {
             search: '',
             category: '',
@@ -231,7 +243,7 @@
             } catch (error) {
                 console.error('Error loading products:', error);
                 document.getElementById('products-table-body').innerHTML = 
-                    '<tr><td colspan="9" class="px-6 py-8 text-center text-red-500">Lỗi khi tải dữ liệu</td></tr>';
+                    '<tr><td colspan="10" class="px-6 py-8 text-center text-red-500">Lỗi khi tải dữ liệu</td></tr>';
             }
         }
 
@@ -239,9 +251,15 @@
         function renderProducts(products) {
             if (products.length === 0) {
                 document.getElementById('products-table-body').innerHTML = 
-                    '<tr><td colspan="9" class="px-6 py-8 text-center text-[#4c739a]">Không có sản phẩm nào</td></tr>';
+                    '<tr><td colspan="10" class="px-6 py-8 text-center text-[#4c739a]">Không có sản phẩm nào</td></tr>';
+                currentPageProductIds = [];
+                selectedProductIds.clear();
+                updateBulkActionsUI();
                 return;
             }
+
+            currentPageProductIds = products.map(product => product.id);
+            selectedProductIds = new Set([...selectedProductIds].filter(id => currentPageProductIds.includes(id)));
 
             const tbody = document.getElementById('products-table-body');
             tbody.innerHTML = products.map(product => {
@@ -275,8 +293,12 @@
                     : `<span class="text-xs font-bold">${formatNumber(product.stock_quantity)} còn lại</span>`;
 
                 const imagePending = product.image_pending === true;
+                const isChecked = selectedProductIds.has(product.id) ? 'checked' : '';
                 return `
                     <tr class="hover:bg-[#f6f7f8] dark:hover:bg-slate-800/30 transition-colors group">
+                        <td class="px-4 py-4 text-center align-middle">
+                            <input type="checkbox" class="product-select-checkbox size-4 rounded border-[#cfdbe7] text-primary focus:ring-primary/40" data-product-id="${product.id}" ${isChecked}>
+                        </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-4">
                                 <div class="size-12 rounded-lg bg-cover bg-center border border-[#cfdbe7] dark:border-slate-700 shadow-sm relative ${product.stock_quantity === 0 ? 'grayscale opacity-60' : ''}" style="background-image: url('${product.image_url}')">
@@ -335,6 +357,42 @@
                     </tr>
                 `;
             }).join('');
+            bindSelectionCheckboxes();
+            updateBulkActionsUI();
+        }
+
+        function bindSelectionCheckboxes() {
+            const rowCheckboxes = document.querySelectorAll('.product-select-checkbox');
+            rowCheckboxes.forEach((checkbox) => {
+                checkbox.addEventListener('change', function() {
+                    const productId = Number(this.getAttribute('data-product-id'));
+                    if (this.checked) {
+                        selectedProductIds.add(productId);
+                    } else {
+                        selectedProductIds.delete(productId);
+                    }
+                    updateBulkActionsUI();
+                });
+            });
+        }
+
+        function updateBulkActionsUI() {
+            const selectedCount = selectedProductIds.size;
+            const bar = document.getElementById('bulk-actions-bar');
+            const countLabel = document.getElementById('bulk-selected-count');
+            const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+            const selectAll = document.getElementById('select-all-products');
+
+            countLabel.textContent = `Đã chọn ${formatNumber(selectedCount)} sản phẩm`;
+            bar.classList.toggle('hidden', selectedCount === 0);
+            bar.classList.toggle('flex', selectedCount > 0);
+            bulkDeleteBtn.disabled = selectedCount === 0;
+
+            if (!selectAll) return;
+            const allSelected = currentPageProductIds.length > 0 && currentPageProductIds.every(id => selectedProductIds.has(id));
+            const hasAnySelected = currentPageProductIds.some(id => selectedProductIds.has(id));
+            selectAll.checked = allSelected;
+            selectAll.indeterminate = !allSelected && hasAnySelected;
         }
 
         // Render Pagination
@@ -576,6 +634,22 @@
                     toggleDropdown('price-dropdown', 'price-filter-btn');
                 });
 
+                document.getElementById('select-all-products').addEventListener('change', function() {
+                    if (this.checked) {
+                        currentPageProductIds.forEach((id) => selectedProductIds.add(id));
+                    } else {
+                        currentPageProductIds.forEach((id) => selectedProductIds.delete(id));
+                    }
+
+                    document.querySelectorAll('.product-select-checkbox').forEach((checkbox) => {
+                        checkbox.checked = this.checked;
+                    });
+                    updateBulkActionsUI();
+                });
+
+                document.getElementById('bulk-delete-btn').addEventListener('click', confirmBulkDeleteProducts);
+                document.getElementById('clear-selection-btn').addEventListener('click', clearSelectedProducts);
+
                 // Setup filter option clicks
                 document.addEventListener('click', function(e) {
                     if (e.target.closest('.filter-option')) {
@@ -633,9 +707,11 @@
         // Delete Product
         async function deleteProduct(productId, button) {
             const confirmBox = button.closest('.fixed');
-            const originalText = button.textContent;
             button.disabled = true;
             button.textContent = 'Đang xóa...';
+            if (confirmBox) {
+                confirmBox.remove();
+            }
 
             try {
                 const response = await fetch(`/admin/api/products/${productId}`, {
@@ -650,21 +726,113 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    confirmBox.remove();
-                    notificationManager.success('Sản phẩm đã được xóa thành công!', 'Thành công');
+                    notificationManager.success(data.message || 'Sản phẩm đã được xóa thành công!', 'Thành công');
+                    selectedProductIds.delete(productId);
                     // Reload products list
                     loadProducts(currentPage);
                     loadStats();
                 } else {
                     notificationManager.error(data.message || 'Không thể xóa sản phẩm', 'Lỗi');
-                    button.disabled = false;
-                    button.textContent = originalText;
                 }
             } catch (error) {
                 console.error('Error deleting product:', error);
                 notificationManager.error('Lỗi khi xóa sản phẩm: ' + error.message, 'Lỗi');
-                button.disabled = false;
-                button.textContent = originalText;
+            }
+        }
+
+        function clearSelectedProducts() {
+            selectedProductIds.clear();
+            document.querySelectorAll('.product-select-checkbox').forEach((checkbox) => {
+                checkbox.checked = false;
+            });
+            updateBulkActionsUI();
+        }
+
+        function confirmBulkDeleteProducts() {
+            const selectedIds = Array.from(selectedProductIds);
+            if (selectedIds.length === 0) return;
+
+            const confirmBox = document.createElement('div');
+            confirmBox.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm';
+            confirmBox.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-[#cfdbe7] dark:border-slate-800 animate-in fade-in duration-300">
+                    <div class="p-6">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="size-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-red-600 dark:text-red-400 text-2xl">warning</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <h3 class="text-lg font-bold text-[#0d141b] dark:text-white">Xác nhận xóa hàng loạt</h3>
+                                <p class="text-sm text-[#4c739a]">Hành động này không thể hoàn tác</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-[#0d141b] dark:text-slate-300 mb-6">
+                            Bạn có chắc muốn xóa <strong>${selectedIds.length}</strong> sản phẩm đã chọn?
+                        </p>
+                        <div class="flex items-center justify-end gap-3">
+                            <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 rounded-xl border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-[#0d141b] dark:text-white hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors">
+                                Hủy
+                            </button>
+                            <button onclick="deleteSelectedProducts(this)" class="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">
+                                Xóa ${selectedIds.length} sản phẩm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmBox);
+
+            confirmBox.addEventListener('click', function(e) {
+                if (e.target === confirmBox) {
+                    confirmBox.remove();
+                }
+            });
+        }
+
+        async function deleteSelectedProducts(button) {
+            const selectedIds = Array.from(selectedProductIds);
+            if (selectedIds.length === 0) return;
+
+            button.disabled = true;
+            button.textContent = 'Đang xóa...';
+            const confirmBox = button.closest('.fixed');
+            if (confirmBox) {
+                confirmBox.remove();
+            }
+
+            try {
+                const response = await fetch('/admin/api/products/bulk-delete', {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        product_ids: selectedIds
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.deleted_count > 0) {
+                    if (data.failed_count > 0) {
+                        notificationManager.error(`Đã xóa ${data.deleted_count} sản phẩm, ${data.failed_count} sản phẩm không thể xóa`, 'Xóa một phần');
+                    } else {
+                        notificationManager.success(`Đã xóa ${data.deleted_count} sản phẩm`, 'Thành công');
+                    }
+
+                    selectedIds.forEach((id) => selectedProductIds.delete(id));
+                    loadProducts(currentPage);
+                    loadStats();
+                } else {
+                    const firstFailedMessage = Array.isArray(data.failed_items) && data.failed_items.length > 0
+                        ? data.failed_items[0].message
+                        : null;
+                    notificationManager.error(firstFailedMessage || data.message || 'Không thể xóa các sản phẩm đã chọn', 'Lỗi');
+                }
+            } catch (error) {
+                console.error('Error bulk deleting products:', error);
+                notificationManager.error('Lỗi khi xóa hàng loạt: ' + error.message, 'Lỗi');
             }
         }
 
