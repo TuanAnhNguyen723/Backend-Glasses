@@ -70,7 +70,6 @@
                         </th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Mã đơn</th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Khách hàng</th>
-                        <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Tài khoản</th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Sản phẩm</th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Trạng thái</th>
                         <th class="px-6 py-4 text-xs font-bold text-[#4c739a] uppercase tracking-wider">Thanh toán</th>
@@ -81,7 +80,7 @@
                 </thead>
                 <tbody id="orders-tbody" class="divide-y divide-[#e7edf3] dark:divide-slate-800">
                     <tr>
-                        <td colspan="10" class="px-6 py-12 text-center text-[#4c739a] dark:text-slate-400">Đang tải dữ liệu...</td>
+                        <td colspan="9" class="px-6 py-12 text-center text-[#4c739a] dark:text-slate-400">Đang tải dữ liệu...</td>
                     </tr>
                 </tbody>
             </table>
@@ -154,7 +153,7 @@
                         const deleteOrderUrl = '{{ url("admin/api/orders") }}';
 
                         if (data.length === 0) {
-                            ordersTbody.innerHTML = '<tr><td colspan="10" class="px-6 py-12 text-center text-[#4c739a] dark:text-slate-400">Không có đơn hàng nào</td></tr>';
+                            ordersTbody.innerHTML = '<tr><td colspan="9" class="px-6 py-12 text-center text-[#4c739a] dark:text-slate-400">Không có đơn hàng nào</td></tr>';
                             currentPageOrderIds = [];
                             selectedOrderIds.clear();
                             updateBulkActionsUI();
@@ -169,9 +168,6 @@
                                     : 'background-color: #e7edf3';
                                 const isChecked = selectedOrderIds.has(order.id) ? ' checked' : '';
                                 var detailUrl = '{{ route("admin.orders") }}/' + order.id;
-                                var accountBadge = order.customer_id
-                                    ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Có tài khoản</span>'
-                                    : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">Khách</span>';
                                 var selectOptions = statusOptions.map(function(opt) {
                                     var sel = opt.value === order.status ? ' selected' : '';
                                     return '<option value="' + escapeHtml(opt.value) + '"' + sel + '>' + escapeHtml(opt.label) + '</option>';
@@ -188,7 +184,6 @@
                                     '<p class="font-medium text-[#0d141b] dark:text-white">' + escapeHtml(order.customer_name) + '</p>' +
                                     '<p class="text-xs text-[#4c739a]">' + escapeHtml(order.customer_email) + '</p>' +
                                     '</td>' +
-                                    '<td class="px-6 py-4">' + accountBadge + '</td>' +
                                     '<td class="px-6 py-4">' +
                                     '<div class="flex items-center gap-3">' +
                                     '<div class="size-10 rounded-lg bg-center bg-no-repeat bg-cover border border-[#e7edf3] dark:border-slate-800" style="' + productImageStyle + '" aria-hidden="true"></div>' +
@@ -279,7 +274,7 @@
                     })
                     .catch(function(err) {
                         console.error(err);
-                        ordersTbody.innerHTML = '<tr><td colspan="10" class="px-6 py-12 text-center text-red-500">Lỗi khi tải dữ liệu</td></tr>';
+                        ordersTbody.innerHTML = '<tr><td colspan="9" class="px-6 py-12 text-center text-red-500">Lỗi khi tải dữ liệu</td></tr>';
                     });
             }
 
