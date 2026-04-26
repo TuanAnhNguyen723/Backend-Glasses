@@ -91,10 +91,13 @@
                             <p class="text-[10px] text-[#4c739a] truncate">Quản Lý Cửa Hàng</p>
                         </div>
                     </div>
-                    <button class="w-full flex items-center justify-center gap-2 rounded-xl h-10 px-4 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-md shadow-primary/30">
-                        <span class="material-symbols-outlined text-sm">logout</span>
-                        <span>Đăng Xuất</span>
-                    </button>
+                    <form method="POST" action="{{ route('admin.logout') }}">
+                        @csrf
+                        <button type="submit" class="w-full flex items-center justify-center gap-2 rounded-xl h-10 px-4 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-md shadow-primary/30">
+                            <span class="material-symbols-outlined text-sm">logout</span>
+                            <span>Đăng Xuất</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </aside>
