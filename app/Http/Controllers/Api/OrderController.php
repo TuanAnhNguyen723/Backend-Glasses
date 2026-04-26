@@ -57,9 +57,8 @@ class OrderController extends Controller
     }
 
     /**
-     * Tạo đơn hàng mới (guest hoặc user đã đăng nhập).
-     * Guest: chỉ được gửi items[] (không có cart_item_ids).
-     * User: có thể gửi cart_item_ids (từ giỏ) hoặc items[].
+     * Tạo đơn hàng mới (bắt buộc user đã đăng nhập).
+     * User có thể gửi cart_item_ids (từ giỏ) hoặc items[].
      */
     public function store(Request $request): JsonResponse
     {
@@ -84,19 +83,11 @@ class OrderController extends Controller
             'items.*.quantity' => 'required_with:items|integer|min:1|max:99',
             'items.*.product_color_id' => 'nullable|exists:product_colors,id',
             'items.*.lens_option_id' => 'nullable|exists:lens_options,id',
-            'user_id' => 'nullable|integer|exists:users,id',
         ]);
 
-        // Có Bearer token → dùng user đăng nhập; không thì dùng user_id trong body (nếu có); còn lại guest.
-        $userId = $request->user()?->id;
-        if ($userId === null && $request->has('user_id')) {
-            $userId = (int) $request->input('user_id');
-        }
+        $userId = $request->user()->id;
 
         if (! empty($validated['cart_item_ids'])) {
-            if (! $userId) {
-                return response()->json(['message' => 'Khách chưa đăng nhập chỉ được tạo đơn bằng items, không dùng cart_item_ids.'], 422);
-            }
             $cartItems = CartItem::query()
                 ->where('user_id', $userId)
                 ->whereIn('id', $validated['cart_item_ids'])
@@ -141,7 +132,7 @@ class OrderController extends Controller
             }
         } else {
             return response()->json([
-                'message' => 'Vui lòng gửi cart_item_ids (khi đã đăng nhập) hoặc items (danh sách sản phẩm).',
+                'message' => 'Vui lòng gửi cart_item_ids hoặc items (danh sách sản phẩm).',
             ], 422);
         }
 
@@ -338,29 +329,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Ghi nhận thanh toán cho đơn guest (sau redirect Momo/VNPay).
-     * Public, xác thực bằng order_number + shipping_email.
-     */
-    public function recordPaymentGuest(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'order_number' => 'required|string|max:32',
-            'shipping_email' => 'required|email',
-            'payment_method' => 'required|string|in:cod,bank_transfer,momo,vnpay,paypal,other',
-            'payment_reference' => 'nullable|string|max:255',
-        ]);
-
-        $order = Order::query()
-            ->whereNull('user_id')
-            ->where('order_number', $validated['order_number'])
-            ->where('shipping_email', $validated['shipping_email'])
-            ->firstOrFail();
-
-        return $this->applyPaymentToOrder($order, $validated, null);
-    }
-
-    /**
-     * Áp dụng trạng thái thanh toán lên đơn (dùng chung cho user và guest).
+     * Áp dụng trạng thái thanh toán lên đơn của user đã đăng nhập.
      */
     private function applyPaymentToOrder(Order $order, array $validated, ?int $createdBy): JsonResponse
     {
