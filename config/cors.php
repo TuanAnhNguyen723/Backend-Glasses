@@ -24,7 +24,11 @@ return [
         'http://127.0.0.1:5173',
     ],
 
-    'allowed_origins_patterns' => [],
+    // Allow local frontend dev servers on any port (3000/4173/5173/etc.)
+    'allowed_origins_patterns' => [
+        '/^https?:\/\/localhost(:\d+)?$/',
+        '/^https?:\/\/127\.0\.0\.1(:\d+)?$/',
+    ],
 
     'allowed_headers' => ['*'],
 
