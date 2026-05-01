@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\PrescriptionController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\AiRecommendationController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\FakePaymentController;
 
 // Public routes
 Route::prefix('v1')->group(function () {
@@ -77,5 +78,11 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/promo-codes/available', [PromoCodeController::class, 'available']);
     Route::post('/promo-codes/{id}/claim', [PromoCodeController::class, 'claim']);
     Route::get('/promo-codes/my-vouchers', [PromoCodeController::class, 'myVouchers']);
+
+    // Fake QR Payments (demo)
+    Route::post('/fake-payments/sessions', [FakePaymentController::class, 'createSession']);
+    Route::get('/fake-payments/sessions/{id}', [FakePaymentController::class, 'show']);
+    Route::post('/fake-payments/sessions/{id}/scan', [FakePaymentController::class, 'scan'])->middleware('throttle:30,1');
+    Route::post('/fake-payments/sessions/{id}/confirm', [FakePaymentController::class, 'confirm'])->middleware('throttle:15,1');
 });
 
