@@ -48,9 +48,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="px-5 py-4 border-t border-[#e7edf3] dark:border-slate-800 flex items-center justify-between">
-            <p id="pagination-info" class="text-sm text-[#4c739a]">Hiển thị 0 - 0 / 0</p>
-            <div id="pagination-controls" class="flex items-center gap-2"></div>
+        <div class="px-6 py-4 bg-[#f6f7f8]/50 dark:bg-slate-800/50 border-t border-[#cfdbe7] dark:border-slate-800 flex items-center justify-between">
+            <p id="pagination-info" class="text-xs font-medium text-[#4c739a]">Hiển thị 0-0 trong tổng số 0 mã</p>
+            <div id="pagination-controls" class="flex items-center gap-1"></div>
         </div>
     </div>
 
@@ -200,8 +200,14 @@ function renderTable(rows) {
                     </label>
                 </td>
                 <td class="px-5 py-3 text-right">
-                    <button onclick="openEditModal(${row.id})" class="px-3 py-1.5 rounded-lg text-xs bg-slate-100 dark:bg-slate-800">Sửa</button>
-                    <button onclick="removePromo(${row.id})" class="px-3 py-1.5 rounded-lg text-xs bg-red-100 text-red-700 ml-2">Xóa</button>
+                    <div class="flex items-center justify-end gap-2">
+                        <button onclick="openEditModal(${row.id})" class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-primary border border-transparent hover:border-[#cfdbe7] transition-all" title="Sửa mã giảm giá">
+                            <span class="material-symbols-outlined text-lg">edit</span>
+                        </button>
+                        <button onclick="removePromo(${row.id})" class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-[#4c739a] hover:text-red-500 border border-transparent hover:border-[#cfdbe7] transition-all" title="Xóa mã giảm giá">
+                            <span class="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -209,14 +215,37 @@ function renderTable(rows) {
 }
 
 function renderPagination(meta) {
-    document.getElementById('pagination-info').textContent = `Hiển thị ${meta.from || 0} - ${meta.to || 0} / ${meta.total || 0}`;
+    document.getElementById('pagination-info').textContent = `Hiển thị ${meta.from || 0}-${meta.to || 0} trong tổng số ${meta.total || 0} mã`;
     const controls = document.getElementById('pagination-controls');
     if ((meta.last_page || 1) <= 1) { controls.innerHTML = ''; return; }
-    controls.innerHTML = `
-        <button class="px-3 py-1 rounded-lg border" ${meta.current_page <= 1 ? 'disabled' : ''} onclick="loadPromoCodes(${meta.current_page - 1})">Trước</button>
-        <span class="px-2 text-sm">${meta.current_page} / ${meta.last_page}</span>
-        <button class="px-3 py-1 rounded-lg border" ${meta.current_page >= meta.last_page ? 'disabled' : ''} onclick="loadPromoCodes(${meta.current_page + 1})">Sau</button>
+    const current = Number(meta.current_page || 1);
+    const last = Number(meta.last_page || 1);
+    const start = Math.max(1, current - 2);
+    const end = Math.min(last, start + 4);
+    let html = `
+        <button onclick="loadPromoCodes(${current - 1})"
+                ${current === 1 ? 'disabled' : ''}
+                class="size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary transition-colors disabled:opacity-50">
+            <span class="material-symbols-outlined text-sm">chevron_left</span>
+        </button>
     `;
+    for (let page = start; page <= end; page++) {
+        const isActive = page === current;
+        html += `
+            <button onclick="loadPromoCodes(${page})"
+                    class="size-8 flex items-center justify-center rounded-lg border ${isActive ? 'border-primary bg-primary text-white' : 'border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary'} text-xs font-bold transition-colors">
+                ${page}
+            </button>
+        `;
+    }
+    html += `
+        <button onclick="loadPromoCodes(${current + 1})"
+                ${current === last ? 'disabled' : ''}
+                class="size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary transition-colors disabled:opacity-50">
+            <span class="material-symbols-outlined text-sm">chevron_right</span>
+        </button>
+    `;
+    controls.innerHTML = html;
 }
 
 function openCreateModal() {
@@ -330,21 +359,69 @@ async function toggleStatus(id, isActive) {
 }
 
 async function removePromo(id) {
-    if (!confirm('Bạn có chắc muốn xóa mã giảm giá này?')) return;
-    const res = await fetch(`{{ route('admin.api.promo-codes.destroy', ':id') }}`.replace(':id', id), {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
+    const row = promoMap[id];
+    const code = escapeHtml(row?.code || 'mã này');
+    showConfirmModal(
+        'Xác nhận xóa mã giảm giá',
+        `Bạn có chắc muốn xóa mã giảm giá <strong>${code}</strong>?`,
+        'Xóa mã giảm giá',
+        async () => {
+            const res = await fetch(`{{ route('admin.api.promo-codes.destroy', ':id') }}`.replace(':id', id), {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            });
+            const json = await res.json();
+            if (!res.ok) {
+                notificationManager.error(json.message || 'Không thể xóa', 'Lỗi');
+                return;
+            }
+            notificationManager.success('Đã xóa mã giảm giá', 'Thành công');
+            loadPromoCodes(currentPage);
         }
+    );
+}
+
+function showConfirmModal(title, description, confirmText, onConfirm) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm';
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-[#cfdbe7] dark:border-slate-800 animate-in fade-in duration-300">
+            <div class="p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="size-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-red-600 dark:text-red-400 text-2xl">warning</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <h3 class="text-lg font-bold text-[#0d141b] dark:text-white">${title}</h3>
+                        <p class="text-sm text-[#4c739a]">Hành động này không thể hoàn tác</p>
+                    </div>
+                </div>
+                <p class="text-sm text-[#0d141b] dark:text-slate-300 mb-6">${description}</p>
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button" class="cancel-btn px-4 py-2 rounded-xl border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-[#0d141b] dark:text-white hover:bg-[#f6f7f8] dark:hover:bg-slate-800 transition-colors">
+                        Hủy
+                    </button>
+                    <button type="button" class="confirm-btn px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">
+                        ${confirmText}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const close = () => modal.remove();
+    modal.querySelector('.cancel-btn').addEventListener('click', close);
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) close();
     });
-    const json = await res.json();
-    if (!res.ok) {
-        notificationManager.error(json.message || 'Không thể xóa', 'Lỗi');
-        return;
-    }
-    notificationManager.success('Đã xóa mã giảm giá', 'Thành công');
-    loadPromoCodes(currentPage);
+    modal.querySelector('.confirm-btn').addEventListener('click', () => {
+        close();
+        onConfirm();
+    });
 }
 
 function toDatetimeLocal(value) {

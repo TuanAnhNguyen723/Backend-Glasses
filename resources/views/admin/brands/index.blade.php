@@ -50,8 +50,8 @@
 
     <!-- Footer Pagination -->
     <footer class="mt-auto px-10 py-6 border-t border-[#e7edf3] dark:border-slate-800 flex items-center justify-between">
-        <p class="text-sm text-[#4c739a]" id="pagination-info">Showing 0 of 0 brands</p>
-        <div id="pagination-controls" class="flex gap-2">
+        <p class="text-xs font-medium text-[#4c739a]" id="pagination-info">Hiển thị 0-0 trong tổng số 0 thương hiệu</p>
+        <div id="pagination-controls" class="flex items-center gap-1">
             <!-- Pagination sẽ được render bằng JavaScript -->
         </div>
     </footer>
@@ -150,7 +150,7 @@
 
         // Render Pagination
         function renderPagination(data) {
-            const info = `Showing ${data.from || 0}-${data.to || 0} of ${data.total || 0} brands`;
+            const info = `Hiển thị ${data.from || 0}-${data.to || 0} trong tổng số ${data.total || 0} thương hiệu`;
             document.getElementById('pagination-info').textContent = info;
 
             const controls = document.getElementById('pagination-controls');
@@ -165,9 +165,9 @@
             html += `
                 <button onclick="loadBrands(${data.current_page - 1})" 
                         ${data.current_page === 1 ? 'disabled' : ''}
-                        class="size-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-[#e7edf3] dark:border-slate-800 text-[#4c739a] hover:bg-primary hover:text-white transition-colors disabled:opacity-50" 
+                        class="size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary transition-colors disabled:opacity-50"
                         ${data.current_page === 1 ? 'disabled' : ''}>
-                    <span class="material-symbols-outlined">chevron_left</span>
+                    <span class="material-symbols-outlined text-sm">chevron_left</span>
                 </button>
             `;
 
@@ -176,7 +176,7 @@
                 const isActive = i === data.current_page;
                 html += `
                     <button onclick="loadBrands(${i})" 
-                            class="size-10 flex items-center justify-center rounded-full ${isActive ? 'bg-primary text-white' : 'bg-white dark:bg-slate-900 border border-[#e7edf3] dark:border-slate-800'} text-sm font-bold ${isActive ? '' : 'hover:bg-primary hover:text-white'} transition-colors">
+                            class="size-8 flex items-center justify-center rounded-lg border ${isActive ? 'border-primary bg-primary text-white' : 'border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary'} text-xs font-bold transition-colors">
                         ${i}
                     </button>
                 `;
@@ -186,9 +186,9 @@
             html += `
                 <button onclick="loadBrands(${data.current_page + 1})" 
                         ${data.current_page === data.last_page ? 'disabled' : ''}
-                        class="size-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-[#e7edf3] dark:border-slate-800 text-[#4c739a] hover:bg-primary hover:text-white transition-colors disabled:opacity-50" 
+                        class="size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary transition-colors disabled:opacity-50"
                         ${data.current_page === data.last_page ? 'disabled' : ''}>
-                    <span class="material-symbols-outlined">chevron_right</span>
+                    <span class="material-symbols-outlined text-sm">chevron_right</span>
                 </button>
             `;
 

@@ -1,17 +1,17 @@
 @extends('layouts.admin')
 
-@section('title', 'Quản Trị Kính Mắt - Quản Lý Sản Phẩm')
+@section('title', 'Quản Trị Kính Mắt - Quản Lý Gọng Kính')
 
 @section('header')
     <header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-8 py-6 flex flex-wrap items-center justify-between gap-6 border-b border-[#cfdbe7] dark:border-slate-800">
         <div class="flex flex-col gap-1">
-            <h2 class="text-3xl font-black tracking-tight dark:text-white">Quản Lý Sản Phẩm</h2>
-            <p class="text-[#4c739a] text-sm font-medium">Cấu hình và theo dõi kho hàng kính mắt của bạn.</p>
+            <h2 class="text-3xl font-black tracking-tight dark:text-white">Quản Lý Gọng Kính</h2>
+            <p class="text-[#4c739a] text-sm font-medium">Products hiện chỉ quản lý gọng/kính mát; lens được quản lý riêng ở tab Lens.</p>
         </div>
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.products.create') }}" class="flex items-center gap-2 h-10 px-5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
                 <span class="material-symbols-outlined text-lg">add</span>
-                Thêm Sản Phẩm Mới
+                Thêm Gọng Mới
             </a>
         </div>
     </header>
@@ -23,7 +23,7 @@
         <div class="flex-grow w-full">
             <label class="relative flex items-center">
                 <span class="material-symbols-outlined absolute left-4 text-[#4c739a]">search</span>
-                <input id="search-input" class="w-full pl-12 pr-4 py-2.5 rounded-xl border-none bg-[#f6f7f8] dark:bg-slate-800 text-[#0d141b] dark:text-white placeholder:text-[#4c739a] focus:ring-2 focus:ring-primary/50 text-sm font-medium" placeholder="Tìm kiếm theo tên sản phẩm, SKU hoặc danh mục..." type="text"/>
+                <input id="search-input" class="w-full pl-12 pr-4 py-2.5 rounded-xl border-none bg-[#f6f7f8] dark:bg-slate-800 text-[#0d141b] dark:text-white placeholder:text-[#4c739a] focus:ring-2 focus:ring-primary/50 text-sm font-medium" placeholder="Tìm kiếm theo tên gọng, SKU hoặc danh mục gọng..." type="text"/>
             </label>
         </div>
     </div>
@@ -32,7 +32,7 @@
         <!-- Category Filter -->
         <div class="relative">
             <button id="category-filter-btn" class="flex shrink-0 items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-[#cfdbe7] dark:border-slate-800 hover:border-primary/50 transition-all shadow-sm">
-                <span class="text-xs font-bold text-[#4c739a] uppercase">Danh mục:</span>
+                <span class="text-xs font-bold text-[#4c739a] uppercase">Danh mục gọng:</span>
                 <span id="category-filter-text" class="text-sm font-semibold">Tất cả</span>
                 <span class="material-symbols-outlined text-lg">expand_more</span>
             </button>
@@ -45,7 +45,7 @@
         <!-- Frame Filter -->
         <div class="relative">
             <button id="frame-filter-btn" class="flex shrink-0 items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-[#cfdbe7] dark:border-slate-800 hover:border-primary/50 transition-all shadow-sm">
-                <span class="text-xs font-bold text-[#4c739a] uppercase">Khung:</span>
+                <span class="text-xs font-bold text-[#4c739a] uppercase">Dáng gọng:</span>
                 <span id="frame-filter-text" class="text-sm font-semibold">Tất cả</span>
                 <span class="material-symbols-outlined text-lg">expand_more</span>
             </button>
@@ -136,9 +136,9 @@
                         <th class="px-4 py-4 text-center">
                             <input id="select-all-products" type="checkbox" class="size-4 rounded border-[#cfdbe7] text-primary focus:ring-primary/40">
                         </th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Sản Phẩm</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Danh Mục</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Khung</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Gọng</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Danh Mục Gọng</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Dáng Gọng</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Chất Liệu</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Tag</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Giá</th>

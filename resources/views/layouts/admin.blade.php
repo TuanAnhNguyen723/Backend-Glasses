@@ -58,10 +58,14 @@
                     </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.products' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.products') }}">
                         <span class="material-symbols-outlined {{ $currentRoute === 'admin.products' ? 'fill-1' : 'text-[#4c739a]' }}">inventory_2</span>
-                        <p class="text-sm {{ $currentRoute === 'admin.products' ? 'font-bold' : 'font-semibold' }}">Quản Lý Sản Phẩm</p>
+                        <p class="text-sm {{ $currentRoute === 'admin.products' ? 'font-bold' : 'font-semibold' }}">Quản Lý Gọng</p>
+                    </a>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ str_starts_with($currentRoute ?? '', 'admin.lenses') ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.lenses') }}">
+                        <span class="material-symbols-outlined {{ str_starts_with($currentRoute ?? '', 'admin.lenses') ? 'fill-1' : 'text-[#4c739a]' }}">visibility</span>
+                        <p class="text-sm {{ str_starts_with($currentRoute ?? '', 'admin.lenses') ? 'font-bold' : 'font-semibold' }}">Quản Lý Lens</p>
                     </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.orders' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.orders') }}">
-                        <span class="material-symbols-outlined {{ $currentRoute === 'admin.orders' ? 'fill-1' : 'text-[#4c739a]' }}" style="font-variation-settings: 'FILL' {{ $currentRoute === 'admin.orders' ? 1 : 0 }}">shopping_bag</span>
+                        <span class="material-symbols-outlined {{ $currentRoute === 'admin.orders' ? 'fill-1' : 'text-[#4c739a]' }}">shopping_bag</span>
                         <p class="text-sm {{ $currentRoute === 'admin.orders' ? 'font-bold' : 'font-semibold' }}">Đơn Hàng</p>
                     </a>
                     <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ $currentRoute === 'admin.promo-codes' ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-[#e7edf3] dark:hover:bg-slate-800 transition-colors' }}" href="{{ route('admin.promo-codes') }}">

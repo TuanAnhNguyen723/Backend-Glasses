@@ -35,6 +35,14 @@ Route::prefix('admin')->middleware('admin.auth')->group(function () {
     Route::get('/api/products/stats', [\App\Http\Controllers\Admin\ProductController::class, 'getStats'])->name('admin.api.products.stats');
     Route::get('/api/products/{id}', [\App\Http\Controllers\Admin\ProductController::class, 'show'])->name('admin.api.products.show');
     Route::get('/api/products', [\App\Http\Controllers\Admin\ProductController::class, 'getProducts'])->name('admin.api.products');
+
+    // Lens Management Routes
+    Route::get('/lenses', [\App\Http\Controllers\Admin\LensController::class, 'index'])->name('admin.lenses');
+    Route::get('/api/lenses', [\App\Http\Controllers\Admin\LensController::class, 'getLenses'])->name('admin.api.lenses');
+    Route::post('/api/lenses', [\App\Http\Controllers\Admin\LensController::class, 'store'])->name('admin.api.lenses.store');
+    Route::put('/api/lenses/{id}', [\App\Http\Controllers\Admin\LensController::class, 'update'])->name('admin.api.lenses.update');
+    Route::delete('/api/lenses/{id}', [\App\Http\Controllers\Admin\LensController::class, 'destroy'])->name('admin.api.lenses.destroy');
+    Route::get('/api/lenses/filters', [\App\Http\Controllers\Admin\LensController::class, 'getFilters'])->name('admin.api.lenses.filters');
     
     // Brand Management Routes
     Route::get('/brands', [\App\Http\Controllers\Admin\BrandController::class, 'index'])->name('admin.brands');

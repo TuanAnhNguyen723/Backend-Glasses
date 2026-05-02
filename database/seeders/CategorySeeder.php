@@ -11,25 +11,25 @@ class CategorySeeder extends Seeder
     {
         $categories = [
             [
-                'name' => 'Kính Cận',
-                'slug' => 'kinh-can',
-                'description' => 'Kính cận chất lượng cao với nhiều loại gọng đa dạng',
+                'name' => 'Gọng Nam',
+                'slug' => 'gong-nam',
+                'description' => 'Gọng kính phù hợp phong cách nam',
                 'parent_id' => null,
                 'sort_order' => 1,
                 'is_active' => true,
             ],
             [
-                'name' => 'Kính Viễn',
-                'slug' => 'kinh-vien',
-                'description' => 'Kính viễn cho người lớn tuổi, thiết kế sang trọng',
+                'name' => 'Gọng Nữ',
+                'slug' => 'gong-nu',
+                'description' => 'Gọng kính phù hợp phong cách nữ',
                 'parent_id' => null,
                 'sort_order' => 2,
                 'is_active' => true,
             ],
             [
-                'name' => 'Kính Đa Trị',
-                'slug' => 'kinh-da-tri',
-                'description' => 'Kính đa trị tích hợp cận và viễn trong một tròng kính',
+                'name' => 'Gọng Unisex',
+                'slug' => 'gong-unisex',
+                'description' => 'Gọng kính trung tính, phù hợp cho cả nam và nữ',
                 'parent_id' => null,
                 'sort_order' => 3,
                 'is_active' => true,
@@ -43,9 +43,9 @@ class CategorySeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'name' => 'Kính Trẻ Em',
-                'slug' => 'kinh-tre-em',
-                'description' => 'Kính dành cho trẻ em với thiết kế an toàn và màu sắc bắt mắt',
+                'name' => 'Gọng Trẻ Em',
+                'slug' => 'gong-tre-em',
+                'description' => 'Gọng kính dành cho trẻ em với thiết kế an toàn và màu sắc bắt mắt',
                 'parent_id' => null,
                 'sort_order' => 5,
                 'is_active' => true,
@@ -58,6 +58,15 @@ class CategorySeeder extends Seeder
                 $category
             );
         }
+
+        Category::whereIn('slug', [
+            'kinh-can',
+            'kinh-vien',
+            'kinh-da-tri',
+            'gong-kinh',
+            'gong-kim-loai',
+            'gong-nhua',
+        ])->update(['is_active' => false]);
 
         $this->command->info('Seeded ' . count($categories) . ' categories.');
     }

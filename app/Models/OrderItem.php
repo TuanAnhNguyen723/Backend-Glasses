@@ -9,14 +9,15 @@ class OrderItem extends Model
 {
     protected $fillable = [
         'order_id', 'product_id', 'product_name', 'product_color_name',
-        'lens_option_name', 'quantity', 'unit_price', 'total_price',
-        'product_image_url'
+        'lens_name', 'lens_sku', 'prescription_type', 'prescription_data',
+        'lens_option_name', 'quantity', 'unit_price', 'total_price', 'product_image_url'
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'total_price' => 'decimal:2',
+        'prescription_data' => 'array',
     ];
 
     public function order(): BelongsTo

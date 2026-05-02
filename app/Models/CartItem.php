@@ -9,12 +9,14 @@ class CartItem extends Model
 {
     protected $fillable = [
         'user_id', 'session_id', 'product_id', 'product_color_id',
-        'lens_option_id', 'quantity', 'unit_price'
+        'lens_id', 'lens_option_id', 'prescription_type', 'prescription_data',
+        'prescription_hash', 'quantity', 'unit_price'
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
+        'prescription_data' => 'array',
     ];
 
     public function user(): BelongsTo
@@ -35,5 +37,10 @@ class CartItem extends Model
     public function lensOption(): BelongsTo
     {
         return $this->belongsTo(LensOption::class);
+    }
+
+    public function lens(): BelongsTo
+    {
+        return $this->belongsTo(Lens::class);
     }
 }

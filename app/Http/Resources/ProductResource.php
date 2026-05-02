@@ -59,7 +59,6 @@ class ProductResource extends JsonResource
             'images' => ProductImageResource::collection($this->whenLoaded('images')),
             'primary_image' => $primaryImageUrl, // Always return fresh signed URL
             'colors' => ProductColorResource::collection($this->whenLoaded('colors')),
-            'lens_options' => LensOptionResource::collection($this->whenLoaded('lensOptions')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -47,12 +47,9 @@
             </table>
         </div>
 
-        <div class="mt-4 flex items-center justify-between">
-            <p id="pagination-text" class="text-xs text-[#4c739a]"></p>
-            <div class="flex gap-2">
-                <button id="prev-btn" class="px-3 py-2 text-xs font-bold rounded-lg border border-[#cfdbe7] dark:border-slate-700">Trước</button>
-                <button id="next-btn" class="px-3 py-2 text-xs font-bold rounded-lg border border-[#cfdbe7] dark:border-slate-700">Sau</button>
-            </div>
+        <div class="mt-4 flex items-center justify-between border-t border-[#cfdbe7] dark:border-slate-800 pt-4">
+            <p id="pagination-text" class="text-xs font-medium text-[#4c739a]"></p>
+            <div id="pagination-controls" class="flex items-center gap-1"></div>
         </div>
     </div>
 
@@ -143,9 +140,54 @@
             }
 
             state.lastPage = data.last_page || 1;
-            document.getElementById('pagination-text').textContent = `Trang ${data.current_page || 1}/${state.lastPage} - Tổng ${data.total || 0} bình luận`;
-            document.getElementById('prev-btn').disabled = (data.current_page || 1) <= 1;
-            document.getElementById('next-btn').disabled = (data.current_page || 1) >= state.lastPage;
+            document.getElementById('pagination-text').textContent = `Hiển thị ${data.from || 0}-${data.to || 0} trong tổng số ${data.total || 0} bình luận`;
+            renderPagination(data.current_page || 1, state.lastPage);
+        }
+
+        function renderPagination(current, lastPage) {
+            const controls = document.getElementById('pagination-controls');
+            if (lastPage <= 1) {
+                controls.innerHTML = '';
+                return;
+            }
+
+            const start = Math.max(1, current - 2);
+            const end = Math.min(lastPage, start + 4);
+            let html = `
+                <button type="button" data-page="${current - 1}"
+                        ${current <= 1 ? 'disabled' : ''}
+                        class="review-page-btn size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary transition-colors disabled:opacity-50">
+                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+            `;
+
+            for (let page = start; page <= end; page++) {
+                const isActive = page === current;
+                html += `
+                    <button type="button" data-page="${page}"
+                            class="review-page-btn size-8 flex items-center justify-center rounded-lg border ${isActive ? 'border-primary bg-primary text-white' : 'border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary'} text-xs font-bold transition-colors">
+                        ${page}
+                    </button>
+                `;
+            }
+
+            html += `
+                <button type="button" data-page="${current + 1}"
+                        ${current >= lastPage ? 'disabled' : ''}
+                        class="review-page-btn size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary transition-colors disabled:opacity-50">
+                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+            `;
+
+            controls.innerHTML = html;
+            controls.querySelectorAll('.review-page-btn').forEach((btn) => {
+                const page = Number(btn.dataset.page);
+                if (!page || page < 1 || page > lastPage) return;
+                btn.addEventListener('click', () => {
+                    state.page = page;
+                    loadReviews();
+                });
+            });
         }
 
         function openReplyModal(reviewId, editingReplyId = null, initialMessage = '') {
@@ -250,18 +292,6 @@
         document.getElementById('reply-filter').addEventListener('change', () => {
             state.page = 1;
             loadReviews();
-        });
-        document.getElementById('prev-btn').addEventListener('click', () => {
-            if (state.page > 1) {
-                state.page--;
-                loadReviews();
-            }
-        });
-        document.getElementById('next-btn').addEventListener('click', () => {
-            if (state.page < state.lastPage) {
-                state.page++;
-                loadReviews();
-            }
         });
         document.getElementById('reply-submit-btn').addEventListener('click', submitReply);
         document.getElementById('reply-cancel-btn').addEventListener('click', closeReplyModal);

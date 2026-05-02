@@ -13,7 +13,7 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'images', 'colors', 'lensOptions'])
+        $query = Product::with(['category', 'images', 'colors'])
             ->active();
 
         // Filters
@@ -51,7 +51,6 @@ class ProductController extends Controller
             'category',
             'images',
             'colors',
-            'lensOptions',
             'primaryImage',
         ])->active()->findOrFail($id);
 

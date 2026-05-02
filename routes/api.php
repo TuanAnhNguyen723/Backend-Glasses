@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\AiRecommendationController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\FakePaymentController;
+use App\Http\Controllers\Api\LensController;
 
 // Public routes
 Route::prefix('v1')->group(function () {
@@ -24,6 +25,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/related', [ProductController::class, 'related']);
     Route::get('/products/{id}', [ProductController::class, 'show']);
+    Route::get('/lenses', [LensController::class, 'index']);
+    Route::get('/lenses/types', [LensController::class, 'types']);
+    Route::get('/lenses/{id}', [LensController::class, 'show']);
     Route::put('/products/{id}/feature', [ProductController::class, 'toggleFeatured']);
     Route::get('/categories', [ProductController::class, 'categories']);
     

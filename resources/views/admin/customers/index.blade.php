@@ -3,7 +3,7 @@
 @section('title', 'Quản Trị Kính Mắt - Khách Hàng')
 
 @section('header')
-    <header class="h-16 flex items-center justify-between border-b border-[#e7edf3] dark:border-slate-800 bg-white dark:bg-slate-900 px-8 shrink-0 sticky top-0 z-10 backdrop-blur-md bg-white/80 dark:bg-slate-900/80">
+    <header class="h-16 flex items-center justify-between border-b border-[#e7edf3] dark:border-slate-800 px-8 shrink-0 sticky top-0 z-10 backdrop-blur-md bg-white/80 dark:bg-slate-900/80">
         <div class="flex items-center gap-8">
             <h2 class="text-xl font-bold tracking-tight text-[#0d141b] dark:text-white">Khách Hàng</h2>
             <div class="relative w-72">
@@ -43,8 +43,8 @@
             </table>
         </div>
         <!-- Pagination -->
-        <div class="flex items-center justify-between px-6 py-4 border-t border-[#e7edf3] dark:border-slate-800">
-            <p class="text-sm text-[#4c739a] dark:text-slate-400" id="pagination-info">Hiển thị 0 đến 0 trong 0 khách hàng</p>
+        <div class="px-6 py-4 bg-[#f6f7f8]/50 dark:bg-slate-800/50 border-t border-[#cfdbe7] dark:border-slate-800 flex items-center justify-between">
+            <p class="text-xs font-medium text-[#4c739a]" id="pagination-info">Hiển thị 0 đến 0 trong 0 khách hàng</p>
             <div id="pagination-controls" class="flex items-center gap-1"></div>
         </div>
     </div>
@@ -134,22 +134,22 @@
                     return;
                 }
                 var html = '';
-                html += '<button type="button" data-page="' + (current - 1) + '" class="customer-page-btn size-10 flex items-center justify-center rounded-lg hover:bg-background-light dark:hover:bg-slate-800 disabled:opacity-50" ' + (current === 1 ? 'disabled' : '') + '><span class="material-symbols-outlined text-lg">chevron_left</span></button>';
+                html += '<button type="button" data-page="' + (current - 1) + '" class="customer-page-btn size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary transition-colors disabled:opacity-50" ' + (current === 1 ? 'disabled' : '') + '><span class="material-symbols-outlined text-sm">chevron_left</span></button>';
                 var start = Math.max(1, current - 2);
                 var end = Math.min(lastPage, current + 2);
                 if (start > 1) {
-                    html += '<button type="button" data-page="1" class="customer-page-btn size-10 flex items-center justify-center rounded-lg hover:bg-background-light dark:hover:bg-slate-800 text-sm">1</button>';
+                    html += '<button type="button" data-page="1" class="customer-page-btn size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary text-xs font-bold transition-colors">1</button>';
                     if (start > 2) html += '<span class="px-2 text-[#4c739a]">...</span>';
                 }
                 for (var i = start; i <= end; i++) {
                     var active = i === current;
-                    html += '<button type="button" data-page="' + i + '" class="customer-page-btn size-10 flex items-center justify-center rounded-lg text-sm font-bold ' + (active ? 'bg-primary text-white' : 'hover:bg-background-light dark:hover:bg-slate-800') + '">' + i + '</button>';
+                    html += '<button type="button" data-page="' + i + '" class="customer-page-btn size-8 flex items-center justify-center rounded-lg border text-xs font-bold transition-colors ' + (active ? 'border-primary bg-primary text-white' : 'border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary') + '">' + i + '</button>';
                 }
                 if (end < lastPage) {
                     if (end < lastPage - 1) html += '<span class="px-2 text-[#4c739a]">...</span>';
-                    html += '<button type="button" data-page="' + lastPage + '" class="customer-page-btn size-10 flex items-center justify-center rounded-lg hover:bg-background-light dark:hover:bg-slate-800 text-sm">' + lastPage + '</button>';
+                    html += '<button type="button" data-page="' + lastPage + '" class="customer-page-btn size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary text-xs font-bold transition-colors">' + lastPage + '</button>';
                 }
-                html += '<button type="button" data-page="' + (current + 1) + '" class="customer-page-btn size-10 flex items-center justify-center rounded-lg hover:bg-background-light dark:hover:bg-slate-800 disabled:opacity-50" ' + (current === lastPage ? 'disabled' : '') + '><span class="material-symbols-outlined text-lg">chevron_right</span></button>';
+                html += '<button type="button" data-page="' + (current + 1) + '" class="customer-page-btn size-8 flex items-center justify-center rounded-lg border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#4c739a] hover:text-primary transition-colors disabled:opacity-50" ' + (current === lastPage ? 'disabled' : '') + '><span class="material-symbols-outlined text-sm">chevron_right</span></button>';
                 paginationControls.innerHTML = html;
                 paginationControls.querySelectorAll('.customer-page-btn').forEach(function(btn) {
                     var p = parseInt(btn.getAttribute('data-page'), 10);

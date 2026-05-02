@@ -3,7 +3,7 @@
 @section('title', 'Chi tiết đơn hàng #' . $order->order_number)
 
 @section('header')
-    <header class="h-16 flex items-center justify-between border-b border-[#e7edf3] dark:border-slate-800 bg-white dark:bg-slate-900 px-8 shrink-0 sticky top-0 z-10 backdrop-blur-md bg-white/80 dark:bg-slate-900/80">
+    <header class="h-16 flex items-center justify-between border-b border-[#e7edf3] dark:border-slate-800 px-8 shrink-0 sticky top-0 z-10 backdrop-blur-md bg-white/80 dark:bg-slate-900/80">
         <div class="flex items-center gap-4">
             <a href="{{ route('admin.orders') }}" class="flex items-center gap-2 text-[#4c739a] hover:text-primary transition-colors">
                 <span class="material-symbols-outlined">arrow_back</span>
@@ -86,10 +86,41 @@
                                 <tr>
                                     <td class="px-6 py-4">
                                         <p class="text-sm font-semibold text-[#0d141b] dark:text-white">{{ $item->product_name }}</p>
-                                        @if($item->product_color_name || $item->lens_option_name)
+                                        @if($item->product_color_name || $item->lens_name || $item->lens_option_name)
                                             <p class="text-xs text-[#4c739a] mt-1">
-                                                {{ $item->product_color_name ?: '—' }} / {{ $item->lens_option_name ?: '—' }}
+                                                {{ $item->product_color_name ?: '—' }} / {{ $item->lens_name ?: ($item->lens_option_name ?: '—') }}
                                             </p>
+                                        @endif
+                                        @if(!empty($item->prescription_data))
+                                            @php
+                                                $p = $item->prescription_data;
+                                                $typeLabels = [
+                                                    'myopia' => 'Cận',
+                                                    'hyperopia' => 'Viễn',
+                                                    'reading' => 'Đọc gần',
+                                                    'other' => 'Khác',
+                                                ];
+                                                $typeLabel = $typeLabels[$item->prescription_type ?? ($p['type'] ?? '')] ?? ($item->prescription_type ?? ($p['type'] ?? '—'));
+                                            @endphp
+                                            <div class="mt-3 rounded-lg border border-[#e7edf3] dark:border-slate-700 bg-background-light/50 dark:bg-slate-800/40 p-3 text-xs text-[#0d141b] dark:text-slate-100">
+                                                <p class="font-bold text-[#4c739a] dark:text-slate-300 mb-2">Độ mắt: {{ $typeLabel }}</p>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                    <p>Mắt phải: SPH {{ $p['right_sphere'] ?? '—' }}, CYL {{ $p['right_cylinder'] ?? '—' }}, AXIS {{ $p['right_axis'] ?? '—' }}</p>
+                                                    <p>Mắt trái: SPH {{ $p['left_sphere'] ?? '—' }}, CYL {{ $p['left_cylinder'] ?? '—' }}, AXIS {{ $p['left_axis'] ?? '—' }}</p>
+                                                </div>
+                                                @if(isset($p['pd']))
+                                                    <p class="mt-1">PD: {{ $p['pd'] }}</p>
+                                                @endif
+                                                @if(!empty($p['notes']))
+                                                    <p class="mt-1">Ghi chú: {{ $p['notes'] }}</p>
+                                                @endif
+                                                @if(!empty($p['image_url']))
+                                                    <p class="mt-1">
+                                                        Toa kính:
+                                                        <a href="{{ $p['image_url'] }}" target="_blank" class="text-primary font-semibold hover:underline">Xem ảnh toa</a>
+                                                    </p>
+                                                @endif
+                                            </div>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium text-[#0d141b] dark:text-slate-100">{{ $item->quantity }}</td>

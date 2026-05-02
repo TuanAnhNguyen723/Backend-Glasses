@@ -7,7 +7,6 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Brand;
 use App\Models\ProductColor;
-use App\Models\LensOption;
 use App\Models\OrderItem;
 use App\Jobs\UploadProductImagesJob;
 use App\Models\ProductImage;
@@ -32,7 +31,7 @@ class ProductController extends Controller
 
     public function edit($id)
     {
-        $product = Product::with(['category', 'brand', 'images', 'colors', 'lensOptions'])->findOrFail($id);
+        $product = Product::with(['category', 'brand', 'images', 'colors'])->findOrFail($id);
         
         // Generate fresh signed URLs for existing images
         foreach ($product->images as $image) {
@@ -146,7 +145,6 @@ class ProductController extends Controller
                 'primary_image_index' => 'nullable|integer',
                 'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
                 'images_meta' => 'nullable|string', // JSON array mapping images -> color_hex
-                'lens_options' => 'nullable|string', // JSON array lens options (per-product)
             ], [
                 'name.required' => 'Tên sản phẩm là bắt buộc',
                 'sku.required' => 'SKU là bắt buộc',
@@ -198,69 +196,6 @@ class ProductController extends Controller
                 'success' => false,
                 'message' => 'Lỗi khi tạo sản phẩm: ' . $e->getMessage(),
             ], 500);
-        }
-
-        // Handle lens options (per-product)
-        if ($request->filled('lens_options')) {
-            $decoded = json_decode($request->input('lens_options'), true);
-            if (! is_array($decoded)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Lens options không hợp lệ (JSON).',
-                ], 422);
-            }
-
-            $rows = [];
-            $sort = 0;
-            $hasDefault = false;
-
-            foreach ($decoded as $opt) {
-                if (! is_array($opt)) {
-                    continue;
-                }
-
-                $name = trim((string) ($opt['name'] ?? ''));
-                if ($name === '') {
-                    continue;
-                }
-
-                $sort++;
-                $isDefault = (bool) ($opt['is_default'] ?? false);
-                $hasDefault = $hasDefault || $isDefault;
-
-                $rows[] = [
-                    'product_id' => $product->id,
-                    'name' => $name,
-                    'description' => isset($opt['description']) ? trim((string) $opt['description']) : null,
-                    'price_adjustment' => (float) ($opt['price_adjustment'] ?? 0),
-                    'is_default' => $isDefault,
-                    'is_active' => array_key_exists('is_active', $opt) ? (bool) $opt['is_active'] : true,
-                    'sort_order' => (int) ($opt['sort_order'] ?? $sort),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-
-            if (! empty($rows)) {
-                // Nếu user không chọn default, set default cho option đầu tiên
-                if (! $hasDefault) {
-                    $rows[0]['is_default'] = true;
-                } else {
-                    // Nếu chọn nhiều default, giữ default đầu tiên
-                    $defaultSeen = false;
-                    foreach ($rows as $i => $r) {
-                        if (! empty($rows[$i]['is_default'])) {
-                            if (! $defaultSeen) {
-                                $defaultSeen = true;
-                            } else {
-                                $rows[$i]['is_default'] = false;
-                            }
-                        }
-                    }
-                }
-
-                LensOption::insert($rows);
-            }
         }
 
         // Handle frame colors FIRST (so we can map hex -> product_color_id for images)
@@ -571,7 +506,6 @@ class ProductController extends Controller
                 'deleted_images' => 'nullable|string', // JSON array of image IDs to delete
                 'images_meta' => 'nullable|string', // JSON array mapping NEW images -> color_hex (index aligned)
                 'existing_images_meta' => 'nullable|string', // JSON array mapping existing image id -> color_hex
-                'lens_options' => 'nullable|string', // JSON array lens options (per-product)
             ], [
                 'name.required' => 'Tên sản phẩm là bắt buộc',
                 'sku.required' => 'SKU là bắt buộc',
@@ -627,73 +561,6 @@ class ProductController extends Controller
                 'success' => false,
                 'message' => 'Lỗi khi cập nhật sản phẩm: ' . $e->getMessage(),
             ], 500);
-        }
-
-        // Handle lens options (per-product)
-        // If lens_options key is present, we treat it as source of truth (including empty array to clear).
-        if ($request->has('lens_options')) {
-            $decoded = json_decode($request->input('lens_options'), true);
-            if (! is_array($decoded)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Lens options không hợp lệ (JSON).',
-                ], 422);
-            }
-
-            // Replace all existing options for this product
-            LensOption::where('product_id', $product->id)->delete();
-
-            $rows = [];
-            $sort = 0;
-            $hasDefault = false;
-
-            foreach ($decoded as $opt) {
-                if (! is_array($opt)) {
-                    continue;
-                }
-
-                $name = trim((string) ($opt['name'] ?? ''));
-                if ($name === '') {
-                    continue;
-                }
-
-                $sort++;
-                $isDefault = (bool) ($opt['is_default'] ?? false);
-                $hasDefault = $hasDefault || $isDefault;
-
-                $rows[] = [
-                    'product_id' => $product->id,
-                    'name' => $name,
-                    'description' => isset($opt['description']) ? trim((string) $opt['description']) : null,
-                    'price_adjustment' => (float) ($opt['price_adjustment'] ?? 0),
-                    'is_default' => $isDefault,
-                    'is_active' => array_key_exists('is_active', $opt) ? (bool) $opt['is_active'] : true,
-                    'sort_order' => (int) ($opt['sort_order'] ?? $sort),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-
-            if (! empty($rows)) {
-                // Nếu user không chọn default, set default cho option đầu tiên
-                if (! $hasDefault) {
-                    $rows[0]['is_default'] = true;
-                } else {
-                    // Nếu chọn nhiều default, giữ default đầu tiên
-                    $defaultSeen = false;
-                    foreach ($rows as $i => $r) {
-                        if (! empty($rows[$i]['is_default'])) {
-                            if (! $defaultSeen) {
-                                $defaultSeen = true;
-                            } else {
-                                $rows[$i]['is_default'] = false;
-                            }
-                        }
-                    }
-                }
-
-                LensOption::insert($rows);
-            }
         }
 
         // Handle deleted images

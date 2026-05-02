@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\Product;
 use App\Models\ProductColor;
+use App\Models\Lens;
 use App\Models\PromoCode;
 use App\Models\UserPromoCode;
 use App\Models\LensOption;
@@ -82,7 +83,19 @@ class OrderController extends Controller
             'items.*.product_id' => 'required_with:items|exists:products,id',
             'items.*.quantity' => 'required_with:items|integer|min:1|max:99',
             'items.*.product_color_id' => 'nullable|exists:product_colors,id',
+            'items.*.lens_id' => 'nullable|exists:lenses,id',
             'items.*.lens_option_id' => 'nullable|exists:lens_options,id',
+            'items.*.prescription_type' => 'nullable|string|in:myopia,hyperopia,reading,other',
+            'items.*.prescription' => 'nullable|array',
+            'items.*.prescription.right_sphere' => 'nullable|numeric|between:-30,30',
+            'items.*.prescription.right_cylinder' => 'nullable|numeric|between:-10,10',
+            'items.*.prescription.right_axis' => 'nullable|integer|between:0,180',
+            'items.*.prescription.left_sphere' => 'nullable|numeric|between:-30,30',
+            'items.*.prescription.left_cylinder' => 'nullable|numeric|between:-10,10',
+            'items.*.prescription.left_axis' => 'nullable|integer|between:0,180',
+            'items.*.prescription.pd' => 'nullable|numeric|between:40,80',
+            'items.*.prescription.notes' => 'nullable|string|max:1000',
+            'items.*.prescription.image_url' => 'nullable|url|max:500',
         ]);
 
         $userId = $request->user()->id;
@@ -91,40 +104,65 @@ class OrderController extends Controller
             $cartItems = CartItem::query()
                 ->where('user_id', $userId)
                 ->whereIn('id', $validated['cart_item_ids'])
-                ->with(['product.primaryImage', 'productColor', 'lensOption'])
+                ->with(['product.primaryImage', 'productColor', 'lens', 'lensOption'])
                 ->get();
             if ($cartItems->isEmpty()) {
                 return response()->json(['message' => 'Không có sản phẩm nào trong giỏ được chọn.'], 422);
             }
-            $orderItemsData = $cartItems->map(fn (CartItem $c) => [
-                'product_id' => $c->product_id,
-                'product_name' => $c->product->name,
-                'product_color_name' => $c->productColor?->name,
-                'lens_option_name' => $c->lensOption?->name,
-                'quantity' => $c->quantity,
-                'unit_price' => (float) $c->unit_price,
-                'product_image_url' => $this->getProductPrimaryImageUrl($c->product),
-            ])->all();
+            $orderItemsData = $cartItems->map(function (CartItem $c) {
+                $this->ensurePrescriptionIsPresentIfRequired($c->lens, $c->prescription_data ?: []);
+
+                return [
+                    'product_id' => $c->product_id,
+                    'product_name' => $c->product->name,
+                    'product_color_name' => $c->productColor?->name,
+                    'lens_name' => $c->lens?->name ?? $c->lensOption?->name,
+                    'lens_sku' => $c->lens?->sku,
+                    'prescription_type' => $c->prescription_type,
+                    'prescription_data' => $c->prescription_data,
+                    'lens_option_name' => $c->lensOption?->name,
+                    'quantity' => $c->quantity,
+                    'unit_price' => (float) $c->unit_price,
+                    'product_image_url' => $this->getProductPrimaryImageUrl($c->product),
+                ];
+            })->all();
         } elseif (! empty($validated['items'])) {
             $orderItemsData = [];
             foreach ($validated['items'] as $row) {
                 $product = Product::findOrFail($row['product_id']);
                 $colorId = $row['product_color_id'] ?? null;
-                $lensId = $row['lens_option_id'] ?? null;
+                $lensId = $row['lens_id'] ?? null;
+                $lensOptionId = $row['lens_option_id'] ?? null;
+                if ($lensId) {
+                    $lensOptionId = null;
+                }
+                $lens = null;
                 if ($colorId) {
                     ProductColor::where('id', $colorId)->where('product_id', $product->id)->firstOrFail();
                 }
                 if ($lensId) {
-                    LensOption::where('id', $lensId)->where('product_id', $product->id)->firstOrFail();
+                    $lens = Lens::where('id', $lensId)->firstOrFail();
+                } elseif ($lensOptionId) {
+                    LensOption::where('id', $lensOptionId)->where('product_id', $product->id)->firstOrFail();
                 }
-                $unitPrice = $this->calculateUnitPrice($product, $colorId, $lensId);
+                $prescriptionData = $this->normalizePrescriptionData(
+                    $row['prescription'] ?? [],
+                    $row['prescription_type'] ?? null
+                );
+                $this->ensurePrescriptionIsPresentIfRequired($lens ?? null, $prescriptionData);
+                $unitPrice = $this->calculateUnitPrice($product, $colorId, $lensId, $lensOptionId);
                 $color = $colorId ? ProductColor::find($colorId) : null;
-                $lens = $lensId ? LensOption::find($lensId) : null;
+                $lens = $lensId ? Lens::find($lensId) : null;
+                $legacyLens = $lensOptionId ? LensOption::find($lensOptionId) : null;
                 $orderItemsData[] = [
                     'product_id' => $product->id,
                     'product_name' => $product->name,
                     'product_color_name' => $color?->name,
-                    'lens_option_name' => $lens?->name,
+                    'lens_name' => $lens?->name ?? $legacyLens?->name,
+                    'lens_sku' => $lens?->sku,
+                    'prescription_type' => $prescriptionData['type'] ?? null,
+                    'prescription_data' => $prescriptionData ?: null,
+                    'lens_option_name' => $legacyLens?->name,
                     'quantity' => (int) $row['quantity'],
                     'unit_price' => $unitPrice,
                     'product_image_url' => $this->getProductPrimaryImageUrl($product),
@@ -187,6 +225,10 @@ class OrderController extends Controller
                     'product_id' => $row['product_id'],
                     'product_name' => $row['product_name'],
                     'product_color_name' => $row['product_color_name'],
+                    'lens_name' => $row['lens_name'] ?? null,
+                    'lens_sku' => $row['lens_sku'] ?? null,
+                    'prescription_type' => $row['prescription_type'] ?? null,
+                    'prescription_data' => $row['prescription_data'] ?? null,
                     'lens_option_name' => $row['lens_option_name'],
                     'quantity' => $row['quantity'],
                     'unit_price' => $row['unit_price'],
@@ -399,7 +441,7 @@ class OrderController extends Controller
         ]);
     }
 
-    private function calculateUnitPrice(Product $product, ?int $productColorId, ?int $lensOptionId): float
+    private function calculateUnitPrice(Product $product, ?int $productColorId, ?int $lensId, ?int $lensOptionId): float
     {
         $price = (float) $product->base_price;
         if ($productColorId) {
@@ -408,13 +450,64 @@ class OrderController extends Controller
                 $price += (float) $color->price_adjustment;
             }
         }
-        if ($lensOptionId) {
+        if ($lensId) {
+            $lens = Lens::find($lensId);
+            if ($lens) {
+                $price += (float) $lens->base_price;
+            }
+        } elseif ($lensOptionId) {
             $lens = LensOption::find($lensOptionId);
             if ($lens) {
                 $price += (float) $lens->price_adjustment;
             }
         }
         return round($price, 2);
+    }
+
+    private function normalizePrescriptionData(array $prescription, ?string $type): array
+    {
+        $data = [];
+        $type = $type ?: ($prescription['type'] ?? null);
+        if ($type) {
+            $data['type'] = $type;
+        }
+
+        foreach ([
+            'right_sphere', 'right_cylinder', 'right_axis',
+            'left_sphere', 'left_cylinder', 'left_axis',
+            'pd',
+        ] as $key) {
+            if (array_key_exists($key, $prescription) && $prescription[$key] !== null && $prescription[$key] !== '') {
+                $data[$key] = is_numeric($prescription[$key]) ? (float) $prescription[$key] : $prescription[$key];
+            }
+        }
+
+        foreach (['notes', 'image_url'] as $key) {
+            if (!empty($prescription[$key])) {
+                $data[$key] = trim((string) $prescription[$key]);
+            }
+        }
+
+        return $data;
+    }
+
+    private function ensurePrescriptionIsPresentIfRequired(?Lens $lens, array $prescriptionData): void
+    {
+        if (!$lens || !$lens->requires_prescription) {
+            return;
+        }
+
+        if (
+            !array_key_exists('right_sphere', $prescriptionData)
+            && !array_key_exists('left_sphere', $prescriptionData)
+        ) {
+            abort(response()->json([
+                'message' => 'Vui lòng nhập độ mắt cho lens đã chọn.',
+                'errors' => [
+                    'prescription' => ['Lens này yêu cầu ít nhất độ cầu của mắt phải hoặc mắt trái.'],
+                ],
+            ], 422));
+        }
     }
 
     private function resolvePromoDiscount(?string $promoCode, float $subtotal, array $productIds = [], ?int $userId = null): float
