@@ -57,7 +57,6 @@ class CartController extends Controller
             'prescription.left_sphere' => 'nullable|numeric|between:-30,30',
             'prescription.left_cylinder' => 'nullable|numeric|between:-10,10',
             'prescription.left_axis' => 'nullable|integer|between:0,180',
-            'prescription.pd' => 'nullable|numeric|between:40,80',
             'prescription.notes' => 'nullable|string|max:1000',
             'prescription.image_url' => 'nullable|url|max:500',
         ]);
@@ -156,7 +155,6 @@ class CartController extends Controller
             'prescription.left_sphere' => 'nullable|numeric|between:-30,30',
             'prescription.left_cylinder' => 'nullable|numeric|between:-10,10',
             'prescription.left_axis' => 'nullable|integer|between:0,180',
-            'prescription.pd' => 'nullable|numeric|between:40,80',
             'prescription.notes' => 'nullable|string|max:1000',
             'prescription.image_url' => 'nullable|url|max:500',
         ]);
@@ -272,7 +270,6 @@ class CartController extends Controller
         foreach ([
             'right_sphere', 'right_cylinder', 'right_axis',
             'left_sphere', 'left_cylinder', 'left_axis',
-            'pd',
         ] as $key) {
             if (array_key_exists($key, $prescription) && $prescription[$key] !== null && $prescription[$key] !== '') {
                 $data[$key] = is_numeric($prescription[$key]) ? (float) $prescription[$key] : $prescription[$key];

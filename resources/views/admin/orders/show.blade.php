@@ -108,9 +108,6 @@
                                                     <p>Mắt phải: SPH {{ $p['right_sphere'] ?? '—' }}, CYL {{ $p['right_cylinder'] ?? '—' }}, AXIS {{ $p['right_axis'] ?? '—' }}</p>
                                                     <p>Mắt trái: SPH {{ $p['left_sphere'] ?? '—' }}, CYL {{ $p['left_cylinder'] ?? '—' }}, AXIS {{ $p['left_axis'] ?? '—' }}</p>
                                                 </div>
-                                                @if(isset($p['pd']))
-                                                    <p class="mt-1">PD: {{ $p['pd'] }}</p>
-                                                @endif
                                                 @if(!empty($p['notes']))
                                                     <p class="mt-1">Ghi chú: {{ $p['notes'] }}</p>
                                                 @endif

@@ -93,7 +93,6 @@ class OrderController extends Controller
             'items.*.prescription.left_sphere' => 'nullable|numeric|between:-30,30',
             'items.*.prescription.left_cylinder' => 'nullable|numeric|between:-10,10',
             'items.*.prescription.left_axis' => 'nullable|integer|between:0,180',
-            'items.*.prescription.pd' => 'nullable|numeric|between:40,80',
             'items.*.prescription.notes' => 'nullable|string|max:1000',
             'items.*.prescription.image_url' => 'nullable|url|max:500',
         ]);
@@ -475,7 +474,6 @@ class OrderController extends Controller
         foreach ([
             'right_sphere', 'right_cylinder', 'right_axis',
             'left_sphere', 'left_cylinder', 'left_axis',
-            'pd',
         ] as $key) {
             if (array_key_exists($key, $prescription) && $prescription[$key] !== null && $prescription[$key] !== '') {
                 $data[$key] = is_numeric($prescription[$key]) ? (float) $prescription[$key] : $prescription[$key];
