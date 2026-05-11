@@ -175,7 +175,6 @@
                                         <option value="round">Tròn</option>
                                         <option value="square">Vuông</option>
                                         <option value="cat-eye">Mắt Mèo</option>
-                                        <option value="rectangular">Chữ Nhật</option>
                                     </select>
                                 </div>
                                 <div>
