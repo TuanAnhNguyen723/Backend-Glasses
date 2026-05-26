@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Lens;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class LensController extends Controller
 {
@@ -37,7 +36,9 @@ class LensController extends Controller
         }
 
         $perPage = max(1, min(50, (int) $request->input('per_page', 10)));
-        return response()->json($query->orderBy('sort_order')->orderByDesc('created_at')->paginate($perPage));
+        return response()->json(
+            $query->orderByDesc('created_at')->orderByDesc('id')->paginate($perPage)
+        );
     }
 
     public function store(Request $request)
@@ -46,7 +47,6 @@ class LensController extends Controller
             'sku' => 'required|string|max:100|unique:lenses,sku',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'lens_type' => ['required', 'string', Rule::in(array_keys(Lens::TYPE_LABELS))],
             'base_price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
             'requires_prescription' => 'nullable|boolean',
@@ -55,6 +55,7 @@ class LensController extends Controller
 
         $lens = Lens::create([
             ...$validated,
+            'lens_type' => 'myopia',
             'slug' => $this->makeUniqueSlug($validated['name']),
             'requires_prescription' => $request->boolean('requires_prescription', true),
             'is_active' => $request->boolean('is_active', true),
@@ -76,7 +77,6 @@ class LensController extends Controller
             'sku' => 'required|string|max:100|unique:lenses,sku,' . $lens->id,
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'lens_type' => ['required', 'string', Rule::in(array_keys(Lens::TYPE_LABELS))],
             'base_price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
             'requires_prescription' => 'nullable|boolean',

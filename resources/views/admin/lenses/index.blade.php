@@ -30,7 +30,6 @@
                     <tr class="bg-[#f6f7f8]/50 dark:bg-slate-800/50 border-b border-[#cfdbe7] dark:border-slate-800">
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">SKU</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Tên Lens</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Loại</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Giá</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Tồn kho</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#4c739a]">Độ mắt</th>
@@ -39,7 +38,7 @@
                     </tr>
                 </thead>
                 <tbody id="lenses-table-body" class="divide-y divide-[#cfdbe7] dark:divide-slate-800">
-                    <tr><td colspan="8" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="7" class="px-6 py-8 text-center text-[#4c739a]">Đang tải dữ liệu...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -58,15 +57,6 @@
                 <input type="hidden" id="lens-id">
                 <input id="lens-sku" class="w-full rounded-lg border-[#cfdbe7] bg-white text-sm py-2 px-3" placeholder="SKU" required>
                 <input id="lens-name" class="w-full rounded-lg border-[#cfdbe7] bg-white text-sm py-2 px-3" placeholder="Tên lens" required>
-                <select id="lens-type" class="w-full rounded-lg border-[#cfdbe7] bg-white text-sm py-2 px-3" required>
-                    <option value="">Chọn loại lens...</option>
-                    <option value="myopia">Lens cận</option>
-                    <option value="hyperopia">Lens viễn</option>
-                    <option value="blue_light">Lens chống ánh sáng xanh</option>
-                    <option value="photochromic">Lens đổi màu</option>
-                    <option value="progressive">Lens đa tròng</option>
-                    <option value="sunglasses">Lens kính mát</option>
-                </select>
                 <input id="lens-price" type="number" min="0" step="1000" class="w-full rounded-lg border-[#cfdbe7] bg-white text-sm py-2 px-3" placeholder="Giá" required>
                 <input id="lens-stock" type="number" min="0" class="w-full rounded-lg border-[#cfdbe7] bg-white text-sm py-2 px-3" placeholder="Tồn kho" required>
                 <textarea id="lens-description" class="w-full rounded-lg border-[#cfdbe7] bg-white text-sm py-2 px-3" placeholder="Mô tả"></textarea>
@@ -92,15 +82,6 @@
     let currentSearch = '';
     let currentPage = 1;
     let lenses = [];
-    const lensTypeLabels = {
-        myopia: 'Lens cận',
-        hyperopia: 'Lens viễn',
-        blue_light: 'Lens chống ánh sáng xanh',
-        photochromic: 'Lens đổi màu',
-        progressive: 'Lens đa tròng',
-        sunglasses: 'Lens kính mát',
-    };
-
     function formatCurrency(v) {
         return new Intl.NumberFormat('vi-VN').format(v) + ' đ';
     }
@@ -114,14 +95,13 @@
     function renderRows(items) {
         const tbody = document.getElementById('lenses-table-body');
         if (!items.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-[#4c739a]">Không có dữ liệu lens</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-[#4c739a]">Không có dữ liệu lens</td></tr>';
             return;
         }
         tbody.innerHTML = items.map((lens) => `
             <tr class="hover:bg-[#f6f7f8] dark:hover:bg-slate-800/30 transition-colors group">
                 <td class="px-6 py-4 text-sm font-semibold">${lens.sku}</td>
                 <td class="px-6 py-4 text-sm">${lens.name}</td>
-                <td class="px-6 py-4 text-sm">${lens.lens_type_label || lensTypeLabels[lens.lens_type] || lens.lens_type}</td>
                 <td class="px-6 py-4 text-sm font-bold">${formatCurrency(lens.base_price)}</td>
                 <td class="px-6 py-4 text-sm">${lens.stock_quantity}</td>
                 <td class="px-6 py-4 text-sm">${lens.requires_prescription ? 'Bắt buộc' : 'Không bắt buộc'}</td>
@@ -219,7 +199,6 @@
         document.getElementById('lens-id').value = lens.id;
         document.getElementById('lens-sku').value = lens.sku;
         document.getElementById('lens-name').value = lens.name;
-        document.getElementById('lens-type').value = lens.lens_type;
         document.getElementById('lens-price').value = lens.base_price;
         document.getElementById('lens-stock').value = lens.stock_quantity;
         document.getElementById('lens-description').value = lens.description || '';
@@ -311,7 +290,6 @@
             const payload = {
                 sku: document.getElementById('lens-sku').value.trim(),
                 name: document.getElementById('lens-name').value.trim(),
-                lens_type: document.getElementById('lens-type').value.trim(),
                 base_price: document.getElementById('lens-price').value,
                 stock_quantity: document.getElementById('lens-stock').value,
                 description: document.getElementById('lens-description').value.trim(),
