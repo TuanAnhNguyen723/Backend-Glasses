@@ -15,7 +15,8 @@ class NotificationManager {
         if (!document.getElementById('notification-container')) {
             const container = document.createElement('div');
             container.id = 'notification-container';
-            container.className = 'fixed top-6 right-6 z-[100] flex flex-col gap-4';
+            // Keep toasts above modals/backdrops (lens/modal uses z-[200])
+            container.className = 'fixed top-6 right-6 z-[300] flex flex-col gap-4';
             document.body.appendChild(container);
             this.container = container;
         } else {

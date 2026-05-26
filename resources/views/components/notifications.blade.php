@@ -11,7 +11,7 @@
 --}}
 
 {{-- Success Toast --}}
-<div class="fixed top-6 right-6 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+<div class="fixed top-6 right-6 z-[300] animate-in fade-in slide-in-from-top-4 duration-300">
     <div class="flex items-center gap-4 bg-[#e6f4ea] border border-[#34a853]/20 px-5 py-4 rounded-xl shadow-xl min-w-[320px]">
         <div class="flex items-center justify-center bg-[#34a853] text-white rounded-full size-8 shrink-0">
             <span class="material-symbols-outlined text-lg font-bold">check</span>
@@ -27,7 +27,7 @@
 </div>
 
 {{-- Error Toast --}}
-<div class="fixed top-28 right-6 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+<div class="fixed top-28 right-6 z-[300] animate-in fade-in slide-in-from-top-4 duration-300">
     <div class="flex items-center gap-4 bg-[#fef2f2] border border-[#ef4444]/20 px-5 py-4 rounded-xl shadow-xl min-w-[320px]">
         <div class="flex items-center justify-center bg-[#ef4444] text-white rounded-full size-8 shrink-0">
             <span class="material-symbols-outlined text-lg font-bold">error</span>
@@ -43,7 +43,7 @@
 </div>
 
 {{-- Warning Toast --}}
-<div class="fixed top-50 right-6 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+<div class="fixed top-50 right-6 z-[300] animate-in fade-in slide-in-from-top-4 duration-300">
     <div class="flex items-center gap-4 bg-[#fffbeb] border border-[#f59e0b]/20 px-5 py-4 rounded-xl shadow-xl min-w-[320px]">
         <div class="flex items-center justify-center bg-[#f59e0b] text-white rounded-full size-8 shrink-0">
             <span class="material-symbols-outlined text-lg font-bold">warning</span>
@@ -59,7 +59,7 @@
 </div>
 
 {{-- Info Toast --}}
-<div class="fixed top-72 right-6 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+<div class="fixed top-72 right-6 z-[300] animate-in fade-in slide-in-from-top-4 duration-300">
     <div class="flex items-center gap-4 bg-[#eff6ff] border border-[#3b82f6]/20 px-5 py-4 rounded-xl shadow-xl min-w-[320px]">
         <div class="flex items-center justify-center bg-[#3b82f6] text-white rounded-full size-8 shrink-0">
             <span class="material-symbols-outlined text-lg font-bold">info</span>

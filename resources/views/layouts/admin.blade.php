@@ -134,7 +134,7 @@
         </main>
     </div>
     <!-- Notification Container -->
-    <div id="notification-container" class="fixed top-6 right-6 z-[100] flex flex-col gap-4"></div>
+    <div id="notification-container" class="fixed top-6 right-6 z-[300] flex flex-col gap-4"></div>
     
     <!-- Notification Manager Script -->
     <script src="{{ asset('js/notifications.js') }}"></script>
